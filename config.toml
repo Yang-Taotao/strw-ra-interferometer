@@ -1,0 +1,35 @@
+# project config
+
+[obs]
+t_start      = "2026-11-01T00:00:00Z" # UTC timestamp for starting obs
+t_total      = 100.0                  # total obs time in seconds
+samp_rate    = 1.0e+7                 # 10MHz sampling rate
+central_freq = 1.418e+9               # 1418 MHz central frequency
+
+[gain]
+rf = 0 # rf gain in db
+if = 0 # if gain in db
+bb = 0 # bb gain in db
+
+[hackrf]
+n_stations = 10 # number of antennas
+serial_num = [
+"0000000000000000", # station 0
+"0000000000000001", # station 1
+"0000000000000002", # station 2
+"0000000000000003", # station 3
+"0000000000000004", # station 4
+"0000000000000005", # station 5
+"0000000000000006", # station 6
+"0000000000000007", # station 7
+"0000000000000008", # station 8
+"0000000000000009", # station 9
+]
+
+[data]
+obs  = "data/obs"  # observation data repo
+test = "data/test" # test data repo
+
+[test]
+t_total   = 100.0  # test obs duration in seconds
+samp_rate = 1.0e+7 # 10MHz test sampling rate

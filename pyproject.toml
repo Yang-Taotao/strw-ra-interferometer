@@ -1,7 +1,30 @@
+[build-system]
+requires      = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name            = "raifm"
+dynamic         = ["version"]
+description     = "Radio astronomy paint-can radio interferometer project at strw."
+readme          = "README.md"
+requires-python = ">=3.14"
+license         = "MIT"
+license-file    = ["LICENSE"]
+authors         = [{ name = "Taotao Yang", email = "tyang@strw.leidenuniv.nl" }]
+
+[project.urls]
+Homepage = "https://github.com/Yang-Taotao/strw-ra-interferometer"
+
+[tool.hatch.version]
+path = "src/raifm/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/raifm"]
+
 [tool.ruff]
 target-version = "py314"
 line-length    = 88
-src            = ["src", "scripts"]
+src            = ["src"]
 extend-exclude = ["notebooks", "data", "docs"]
 
 [tool.ruff.lint]
@@ -10,3 +33,10 @@ extend-select = ["B", "N", "SIM", "NPY", "PTH", "ANN", "RUF"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["raifm"]
+
+[tool.mypy]
+python_version = "3.14"
+files          = ["src"]
+exclude        = ["dev", "data", "docs"]
+packages       = ["raifm"]
+strict         = true
