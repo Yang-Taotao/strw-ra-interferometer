@@ -1,0 +1,89 @@
+name: Bug report
+description: Report a problem with raifm — crashes, wrong results, or unexpected behaviour.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug report. Please fill in as much as you can —
+        the environment and reproduction details are what make bugs fixable.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "Everything is on fire!!!"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: "The run should complete and produce a ring..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: |
+        The exact command you ran, plus any config files or script arguments.
+        A minimal example helps enormously.
+      render: shell
+      placeholder: |
+        conda activate strw-ra-py314
+        python main.py -t
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback / error output
+      description: Paste the full error message.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: raifm-version
+    attributes:
+      label: raifm version
+      description: Output of `python -c "import raifm; print(raifm.__version__)"`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.14.9"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows (WSL)
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates.
+          required: true
+        - label: I am using the environment defined in `env.yml`.
+          required: false
