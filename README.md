@@ -45,12 +45,34 @@ We then do a quick editable install of the current package:
 pip install -e .
 ```
 
+Current version should read `0.1.0`:
+
+```sh
+python main.py -v
+raifm 0.1.0
+```
+
 ## quickstart
 
 Run operations from cli:
 
 ```sh
+# the default
+# this will trigger actual obsevation from real hackrf data stream
+# optional cli flag -o
 python main.py
+
+# run tests
+# this goes: [fake hackrf c64 data] -> [osmocom source] -> c64 bin
+# test runs are armed in parallel and starts roughly within 1ms with each other
+python main.py -t
+# optionally set duration (s) and sample rate (Hz)
+python main.py -t --duration 10 --rate 1000000
+
+# purge
+# unlink test generated .bin files under ./data/test
+# pass -y to confirm purge, otherwise it'll be a dry run
+python main.py -p -y
 ```
 
 ## work in progress
