@@ -38,6 +38,8 @@ class Config:
     gain_rf: int
     gain_if: int
     gain_bb: int
+    n_chan: int
+    bias: int
     obs_dir: Path
     test_dir: Path
     test_t_total: float
@@ -73,6 +75,8 @@ def load_config(path: Path = DEFAULT_CONFIG) -> Config:
         gain_rf=cfg["gain"]["rf"],
         gain_if=cfg["gain"]["if"],
         gain_bb=cfg["gain"]["bb"],
+        n_chan=cfg["obs"]["n_chan"],
+        bias=cfg["hackrf"]["bias"],
         obs_dir=Path(cfg["data"]["obs"]),
         test_dir=Path(cfg["data"]["test"]),
         test_t_total=cfg["test"]["t_total"],
