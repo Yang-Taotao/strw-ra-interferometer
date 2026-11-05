@@ -1,8 +1,17 @@
 """
-Radio astronomy paint-can interferometer data acquisition
+Main exec.
+
+Example CLI:
+    // for observation runs
+    python main.py
+    // for testing osmocom_source fake hackrf data processing
+    python main.py -t
+    python main.py -t --duration 10 --rate 1000000
+    // for purging generated test data
+    python main.py -p -y
 """
 
-import raifm
+from raifm.cli import main
 
 if __name__ == "__main__":
-    print(raifm.__version__)
+    main()
