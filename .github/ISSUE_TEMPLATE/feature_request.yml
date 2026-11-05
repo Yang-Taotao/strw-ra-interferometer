@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a new feature for raifm.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are welcome. Please describe the scientific or
+        engineering need, not just the implementation.
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Scientific or engineering motivation
+      description: What problem does this solve? Why is it needed?
+      placeholder: "The stations just don't start at the same time..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How you imagine this working.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates.
+          required: true
