@@ -6,6 +6,8 @@ Helper utils.
 # pyright: reportAttributeAccessIssue=false
 
 import hashlib
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -82,3 +84,9 @@ def osmocom_source(
         src.set_gain(cfg.gain_bb, "BB", chan)
 
     return src
+
+
+def sleep_until(t_start: datetime) -> None:
+    """sleep until starting UTC timestamp"""
+    while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0:
+        time.sleep(max(0.0, remaining - 0.001))
