@@ -14,7 +14,7 @@ from pathlib import Path
 
 from gnuradio import blocks, gr
 
-from raifm.config import Config
+from raifm.config import HACKRFCFG, Config
 from raifm.utils import osmocom_source, sleep_until
 
 
@@ -30,6 +30,7 @@ class Job:
     path_out: Path
     core: int
     t_start: datetime
+    meta: bool
 
 
 def capture_process(cfg: Config, job: Job) -> None:
@@ -38,7 +39,16 @@ def capture_process(cfg: Config, job: Job) -> None:
 
     src = osmocom_source(cfg, job.device, job.antenna, job.rate_hz)
     head = blocks.head(gr.sizeof_gr_complex, job.samples)
-    sink = blocks.file_sink(gr.sizeof_gr_complex, str(job.path_out), False)
+    if job.meta:
+        sink = blocks.file_meta_sink(
+            gr.sizeof_gr_complex,
+            str(job.path_out),
+            samp_rate=job.rate_hz,
+            complex=True,
+            max_segment_size=HACKRFCFG.meta_segment,
+        )
+    else:
+        sink = blocks.file_sink(gr.sizeof_gr_complex, str(job.path_out), False)
 
     tb = gr.top_block(f"capture_{job.label}")
     tb.connect(src, head, sink)
