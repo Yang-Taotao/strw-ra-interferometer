@@ -44,7 +44,11 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
     """gnuradio jobs for test"""
 
     ncores = os.cpu_count() or 1
-    device = f"file={ref},freq={cfg.central_freq:.0f},rate={cfg.test_samp_rate:.0f}"
+    device = (
+        f"file={ref.as_posix()},"
+        f"freq={cfg.central_freq:.0f},"
+        f"rate={cfg.test_samp_rate:.0f}"
+    )
 
     return [
         Job(
