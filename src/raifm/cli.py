@@ -12,10 +12,14 @@ from typing import Any
 from raifm import __version__
 from raifm.config import DEFAULT_CONFIG, HACKRFCFG, Config, load_config, station_name
 from raifm.run import Job, run_jobs
+
+# TODO
+# from raifm.trim import find_steps, trim
+from raifm.usb import BUDGET_MBPS, UsbPlan, usb2_buses
 from raifm.utils import convert, gen_test_iq, hash_gen, sha256
 
 
-def obs_jobs(cfg: Config, run_dir: Path) -> list[Job]:
+def obs_jobs(cfg: Config, run_dir: Path, meta: bool) -> list[Job]:
     """gnuradio jobs for obs"""
 
     ncores = os.cpu_count() or 1
@@ -30,6 +34,7 @@ def obs_jobs(cfg: Config, run_dir: Path) -> list[Job]:
             path_out=run_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=cfg.t_start,
+            meta=meta,
         )
         for idx, serial in enumerate(cfg.serial_num, 1)
     ]
@@ -51,18 +56,19 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
             path_out=cfg.test_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=t_start,
+            meta=False,
         )
         for idx in range(cfg.n_stations)
     ]
 
 
-def cmd_obs(cfg: Config) -> None:
+def cmd_obs(cfg: Config, meta: bool) -> None:
     """start per station gnuradio obs at t_start"""
 
     run_dir = cfg.obs_dir / cfg.t_start.strftime("%Y%m%dT%H%M%SZ")
     run_dir.mkdir(parents=True)
 
-    jobs = obs_jobs(cfg, run_dir)
+    jobs = obs_jobs(cfg, run_dir, meta)
     print(
         f"raifm: {cfg.n_stations} stations at {cfg.samp_rate / 1e6:.1f} Msps:"
         f" {cfg.t_total:.0f} s -> {run_dir}"
@@ -139,6 +145,67 @@ def cmd_purge(cfg: Config, goahead: bool) -> None:
     print(f"raifm: unlikned {len(targets)} files, {total / 1e9:.1f} GB")
 
 
+def cmd_usb(cfg: Config, n_ports: int, n_hackrf: int) -> None:
+    """print the usb 2.0 data rate budget of n_hackrf boards over n_ports"""
+
+    plan = UsbPlan(n_hackrf, n_ports, cfg.samp_rate)
+    print(
+        f"raifm: {n_hackrf} boards at {cfg.samp_rate / 1e6:.1f} Msps,"
+        f" {n_ports} port(s), {HACKRFCFG.size_i8} B per sample"
+    )
+    print(
+        f"    per board {plan.per_board_mbps:.1f} Mbit/s,"
+        f" all boards {plan.total_mbps:.1f} Mbit/s"
+    )
+
+    for label, buses in (("one bus", 1), (f"{n_ports} bus(es)", n_ports)):
+        load = plan.bus_mbps(buses)
+        verdict = (
+            f"ok, {BUDGET_MBPS - load:.1f} Mbit/s spare"
+            if load <= BUDGET_MBPS
+            else f"over by {load - BUDGET_MBPS:.1f} Mbit/s"
+        )
+        print(f"    {label:10s} {load:8.1f} Mbit/s of {BUDGET_MBPS:.1f} -> {verdict}")
+
+    print(
+        f"    max rate {plan.max_rate_hz(1) / 1e6:.2f} Msps on one bus,"
+        f" {plan.max_rate_hz(n_ports) / 1e6:.2f} Msps on {n_ports} bus(es)"
+    )
+    print(f"    this machine has {usb2_buses()} usb 2.0 buses")
+
+
+# TODO
+# def cmd_trim(cfg: Config) -> None:
+#     """drop the windows in which any station lost samples"""
+
+#     runs = sorted(path for path in cfg.obs_dir.glob("*") if path.is_dir())
+#     if not runs:
+#         print(f"raifm: no run under {cfg.obs_dir}")
+#         return None
+
+#     run_dir = runs[-1]
+#     paths = {path.stem: path for path in sorted(run_dir.glob("ant*.bin"))}
+#     if len(paths) < 3:
+#         print(
+#             f"raifm: {len(paths)} stations, "
+#             "3 or more stations are needed to judge which one lost samples"
+#         )
+#         return None
+#     steps, unlocked = find_steps(paths)
+#     print(
+#         f"raifm: {run_dir} {len(paths)} stations, "
+#         f"{len(steps)} steps, {unlocked} windows without a peak"
+#     )
+
+#     for step in steps:
+#         print(f"    at sample {step.at}: {step.station} lost {step.lost}")
+#     if not steps:
+#         return None
+
+#     for path in trim(paths, steps, cfg.obs_dir.parent / "trim").values():
+#         print(f"    {path} {path.stat().st_size / 1e9:.2f} GB")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """cli arg parser"""
 
@@ -168,6 +235,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="purge test bin files",
     )
+    # TODO
+    # mode.add_argument(
+    #     "-m",
+    #     "--trim",
+    #     action="store_true",
+    #     help="cut lost sample windows out of the latest obs run",
+    # )
+    mode.add_argument(
+        "-u",
+        "--usb",
+        action="store_true",
+        help="usb 2.0 data rate budget of the boards",
+    )
 
     parser.add_argument(
         "--config", type=Path, default=DEFAULT_CONFIG, help="configuration file"
@@ -177,6 +257,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rate", type=float, metavar="HZ", help="override samp_rate")
     parser.add_argument(
         "-y", "--yes", action="store_true", help="confirm test file purge"
+    )
+    parser.add_argument(
+        "--meta", action="store_true", help="save with file_meta_sink headers"
+    )
+    parser.add_argument(
+        "--ports", type=int, default=1, metavar="N", help="usb ports in use"
+    )
+    parser.add_argument(
+        "--hackrf",
+        type=int,
+        metavar="N",
+        help="hackrf boards in use, defaults to [hackrf] n_stations",
     )
 
     parser.add_argument(
@@ -226,7 +318,12 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.purge:
         cmd_purge(cfg, args.yes)
+    # TODO
+    # elif args.trim:
+    #     cmd_trim(cfg)
+    elif args.usb:
+        cmd_usb(cfg, args.ports, args.hackrf or cfg.n_stations)
     elif args.test:
         cmd_test(cfg)
     else:
-        cmd_obs(cfg)
+        cmd_obs(cfg, args.meta)
