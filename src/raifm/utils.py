@@ -6,6 +6,7 @@ Helper utils.
 # pyright: reportAttributeAccessIssue=false
 
 import hashlib
+import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,6 +27,18 @@ def sha256(path: Path) -> str:
 def hash_gen(paths: list[Path]) -> dict[Path, str]:
     """get all sha256 hash for file in list"""
     return {path: sha256(path) for path in paths}
+
+
+def hackrf_state(serial: str) -> dict[str, str]:
+    """get M0 state and byte count of one hackrf (hackrf_debug -S)"""
+    out = subprocess.run(
+        ["hackrf_debug", "-S", "-d", serial],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    pairs = (line.split(":", 1) for line in out.splitlines() if ":" in line)
+    return {key.strip(): value.strip() for key, value in pairs}
 
 
 def gen_test_iq(path: Path, samples: int) -> None:
@@ -89,4 +102,4 @@ def osmocom_source(
 def sleep_until(t_start: datetime) -> None:
     """sleep until starting UTC timestamp"""
     while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0:
-        time.sleep(max(0.0, remaining - 0.001))
+        time.sleep(max(0.0, remaining - 0.000001))  # 1 micro sec
