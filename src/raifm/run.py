@@ -6,12 +6,12 @@ Hardware interface.
 # pyright: reportAttributeAccessIssue=false
 
 import multiprocessing
-import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import psutil
 from gnuradio import blocks, gr
 
 from raifm.config import HACKRFCFG, Config
@@ -35,7 +35,9 @@ class Job:
 
 def capture_process(cfg: Config, job: Job) -> None:
     """capture one station per core, start on the common timestamp"""
-    os.sched_setaffinity(0, {job.core})
+
+    p = psutil.Process()
+    p.cpu_affinity([job.core])
 
     src = osmocom_source(cfg, job.device, job.antenna, job.rate_hz)
     head = blocks.head(gr.sizeof_gr_complex, job.samples)
