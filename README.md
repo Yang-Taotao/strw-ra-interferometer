@@ -73,8 +73,17 @@ python main.py -t --duration 10 --rate 1000000
 # unlink test generated .bin files under ./data/test
 # pass -y to confirm purge, otherwise it'll be a dry run
 python main.py -p -y
+
+# obs with file_meta_sink headers instead of a plain file sink
+python main.py --meta
+
+# usb 2.0 budget: n boards over m ports, at [obs] samp_rate
+python main.py -u --hackrf 3 --ports 3
+# boards behind one hub share the hub's single bus
+python main.py -u --hackrf 3 --ports 1
 ```
 
 ## work in progress
 
-Future sections are work in progress.
+- a utility to scan the latest observation data and find common lost time samples
+- more console prints to visualize job progress
