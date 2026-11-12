@@ -45,5 +45,5 @@ exclude        = ["dev", "data", "docs"]
 strict         = true
 
 [[tool.mypy.overrides]]
-module                 = ["gnuradio.*", "osmosdr.*"]
+module                 = ["gnuradio.*", "osmosdr.*", "psutil.*"]
 ignore_missing_imports = true
