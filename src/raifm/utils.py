@@ -29,6 +29,18 @@ def hash_gen(paths: list[Path]) -> dict[Path, str]:
     return {path: sha256(path) for path in paths}
 
 
+def hackrf_serials() -> list[str]:
+    """get serial number of every connected hackrf (hackrf_info)"""
+    out = subprocess.run(
+        ["hackrf_info"], capture_output=True, text=True, check=False
+    ).stdout
+    return [
+        line.split(":", 1)[1].strip()
+        for line in out.splitlines()
+        if line.startswith("Serial number:")
+    ]
+
+
 def hackrf_state(serial: str) -> dict[str, str]:
     """get M0 state and byte count of one hackrf (hackrf_debug -S)"""
     out = subprocess.run(
