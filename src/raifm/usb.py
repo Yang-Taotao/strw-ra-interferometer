@@ -2,6 +2,7 @@
 Hackrf USB 2.0 datarate estimator utils
 """
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,11 +42,16 @@ class UsbPlan:
         return BUDGET_MBPS * 1e6 / (boards * HACKRFCFG.size_i8 * 8)
 
 
-def usb2_buses() -> int:
+def usb2_buses() -> int | None:
     """get num of usb 2.0 host bus on local machine"""
-    root = Path("/sys/bus/usb/devices")
-    return sum(
-        1
-        for path in root.glob("usb*")
-        if (path / "speed").exists() and (path / "speed").read_text().strip() == "480"
-    )
+    # TODO: darwin and win32 support
+    if sys.platform.startswith("linux"):
+        root = Path("/sys/bus/usb/devices")
+        return sum(
+            1
+            for path in root.glob("usb*")
+            if (path / "speed").exists()
+            and (path / "speed").read_text().strip() == "480"
+        )
+    else:
+        return None
