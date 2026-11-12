@@ -1,14 +1,21 @@
 # strw-ra-interferometer
 
-Radio Astronomy paint-can interferometer project at Leiden Observatory.
+**Radio Astronomy paint-can interferometer project** at [Leiden Observatory](https://www.strw.leidenuniv.nl/).
+
+> [!CAUTION]
+> Work in progress project
+>
+> Breaking changes may be frequent, see `README` for instructions.
 
 ## toc
 
 - [strw-ra-interferometer](#strw-ra-interferometer)
   - [toc](#toc)
   - [tree](#tree)
-  - [env](#env)
   - [quickstart](#quickstart)
+    - [prep](#prep)
+    - [env](#env)
+    - [cli](#cli)
   - [conventions](#conventions)
   - [metadata sidecar](#metadata-sidecar)
 
@@ -18,19 +25,35 @@ The current project is laid out with:
 
 ```sh
 .
-├── config.toml
-├── data
+├── config.toml     # config file
+├── data            # data directory
+│   ├── obs
+│   └── test
 ├── dev
-├── env.yml
+├── env.yml         # conda env source
 ├── LICENSE
-├── main.py
+├── main.py         # cli
 ├── pyproject.toml
 ├── README.md
 └── src
-    └── raifm
+    └── raifm       # src
 ```
 
-## env
+## quickstart
+
+### prep
+
+First clone the project to a directory and enter:
+
+```sh
+git clone https://github.com/Yang-Taotao/strw-ra-interferometer.git
+cd strw-ra-interferometer
+```
+
+### env
+
+> [!IMPORTANT]
+> Make sure `miniforge3` or equivalent is installed.
 
 The dependencies are handled entirely by `conda`.
 Create and activate this `env` from `./env.yml`:
@@ -53,7 +76,7 @@ python main.py -v
 raifm 0.1.0
 ```
 
-## quickstart
+### cli
 
 Run operations from cli:
 
@@ -79,12 +102,14 @@ python main.py -p -y
 python main.py -u --hackrf 3 --ports 3
 # all hackrf connected to a usb hub share the hub's bus
 # how much we can push the samp rate dependends on how many independent busses we use
-python main.py -u --hackrf 3 --ports 1
 ```
 
-The antenna stations are assigned from 1 index under `./config.toml`.
-These hackrf serials are meant to be kept as is,
-we recommend assigning stations to array configs following existing labels.
+> [!NOTE]
+> The antenna stations are assigned from 1 index under `./config.toml`.
+>
+> These hackrf serials are meant to be kept as is.
+>
+> We recommend assigning stations to array configs following existing labels.
 
 ## conventions
 
@@ -126,7 +151,10 @@ Example directory tree under `./data`:
     └── test_iq.bin
 ```
 
-The metadata contains source parameters from `config.toml`,
-actual metadata saves enteries from cli overrides.
-The aim is to keep `config.toml` atomic across devices.
-The `metadata.json` files are preserved across `-p` purge calls for tests.
+> [!NOTE]
+> The metadata contains source parameters from `config.toml`,
+> actual metadata saves enteries from cli overrides.
+>
+> The aim is to keep `config.toml` atomic across devices.
+>
+> The `metadata.json` files are preserved across `-p` purge calls for tests.
