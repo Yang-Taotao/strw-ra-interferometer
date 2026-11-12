@@ -4,6 +4,7 @@ CLI setup.
 
 import argparse
 import os
+import sys
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -12,15 +13,19 @@ from typing import Any
 from raifm import __version__
 from raifm.config import DEFAULT_CONFIG, HACKRFCFG, Config, load_config, station_name
 from raifm.run import Job, run_jobs
-
-# TODO
-# from raifm.trim import find_steps, trim
 from raifm.usb import BUDGET_MBPS, UsbPlan, usb2_buses
-from raifm.utils import convert, gen_test_iq, hash_gen, sha256
+from raifm.utils import (
+    convert,
+    gen_test_iq,
+    hackrf_serials,
+    hackrf_state,
+    hash_gen,
+    sha256,
+)
 
 
-def obs_jobs(cfg: Config, run_dir: Path, meta: bool) -> list[Job]:
-    """gnuradio jobs for obs"""
+def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[Job]:
+    """gnuradio jobs for the connected hackrf"""
 
     ncores = os.cpu_count() or 1
 
@@ -34,9 +39,8 @@ def obs_jobs(cfg: Config, run_dir: Path, meta: bool) -> list[Job]:
             path_out=run_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=cfg.t_start,
-            meta=meta,
         )
-        for idx, serial in enumerate(cfg.serial_num, 1)
+        for idx, serial in found
     ]
 
 
@@ -60,30 +64,58 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
             path_out=cfg.test_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=t_start,
-            meta=False,
         )
-        for idx in range(cfg.n_stations)
+        for idx in range(1, cfg.n_stations + 1)
     ]
 
 
-def cmd_obs(cfg: Config, meta: bool) -> None:
+def cmd_obs(cfg: Config) -> None:
     """start per station gnuradio obs at t_start"""
 
+    connected = set(hackrf_serials())
+    found = [
+        (idx, serial)
+        for idx, serial in enumerate(cfg.serial_num, 1)
+        if serial in connected
+    ]
+    if not found:
+        print(f"raifm: no hackrf connected of {len(cfg.serial_num)} configured")
+        return None
+
+    missing = [
+        station_name(idx)
+        for idx, serial in enumerate(cfg.serial_num, 1)
+        if serial not in connected
+    ]
     run_dir = cfg.obs_dir / cfg.t_start.strftime("%Y%m%dT%H%M%SZ")
     run_dir.mkdir(parents=True)
 
-    jobs = obs_jobs(cfg, run_dir, meta)
     print(
-        f"raifm: {cfg.n_stations} stations at {cfg.samp_rate / 1e6:.1f} Msps:"
-        f" {cfg.t_total:.0f} s -> {run_dir}"
+        f"raifm: {len(found)} of {len(cfg.serial_num)} configured hackrf connected:"
+        f" {', '.join(station_name(idx) for idx, _ in found)}",
+        flush=True,
+    )
+    if missing:
+        print(f"raifm: not connected: {', '.join(missing)}", flush=True)
+    print(
+        f"raifm: {cfg.samp_rate / 1e6:.1f} Msps, {cfg.t_total:.1f} s -> {run_dir}",
+        flush=True,
     )
 
-    run_jobs(cfg, jobs)
+    jobs = obs_jobs(cfg, run_dir, found)
+    run_jobs(cfg, jobs, cfg.t_start + timedelta(seconds=cfg.t_total))
 
     checksums = hash_gen([job.path_out for job in jobs])
     for job in jobs:
         size = job.path_out.stat().st_size
-        print(f"  {job.label:12s} {size / 1e9:.2f} GB  {checksums[job.path_out]}")
+        print(f"    {job.label:12s} {size / 1e9:.2f} GB  {checksums[job.path_out]}")
+
+    print("raifm: hackrf_debug -S readouts")
+    for idx, serial in found:
+        print(
+            f"    {station_name(idx):12s} {serial} "
+            f"{hackrf_state(serial).get('M0 count', '?')}"
+        )
 
 
 def cmd_test(cfg: Config) -> None:
@@ -98,14 +130,15 @@ def cmd_test(cfg: Config) -> None:
     t_start = datetime.now(UTC) + timedelta(seconds=3)
     print(
         f"raifm: test {cfg.n_stations} stations at {cfg.test_samp_rate / 1e6:.1f} Msps:"
-        f" {cfg.test_t_total:.0f} s with {samples:.2e} samples"
+        f" {cfg.test_t_total:.0f} s with {samples:.1e} samples",
+        flush=True,
     )
 
     gen_test_iq(iq, samples)
     convert(iq, ref)
 
     jobs = test_jobs(cfg, ref, t_start)
-    run_jobs(cfg, jobs)
+    run_jobs(cfg, jobs, t_start + timedelta(seconds=cfg.test_t_total))
 
     reference = sha256(ref)
     checksums = hash_gen([job.path_out for job in jobs])
@@ -153,34 +186,34 @@ def cmd_usb(cfg: Config, n_ports: int, n_hackrf: int) -> None:
     """print the usb 2.0 data rate budget of n_hackrf boards over n_ports"""
 
     plan = UsbPlan(n_hackrf, n_ports, cfg.samp_rate)
+    buses = usb2_buses()
+    print("raifm: checking data rate requirements")
+    print(f"    {sys.platform} platform with {buses} usb 2.0 bus")
     print(
-        f"raifm: {n_hackrf} boards at {cfg.samp_rate / 1e6:.1f} Msps,"
-        f" {n_ports} port(s), {HACKRFCFG.size_i8} B per sample"
+        f"    {n_hackrf} hackrf, {cfg.samp_rate / 1e6:.1f} Msps,"
+        f" {n_ports} port, {HACKRFCFG.size_i8} B per sample"
     )
     print(
-        f"    per board {plan.per_board_mbps:.1f} Mbit/s,"
-        f" all boards {plan.total_mbps:.1f} Mbit/s"
+        f"    per hackrf {plan.per_board_mbps:.1f} Mbps,"
+        f" total {plan.total_mbps:.1f} Mbps"
     )
 
-    for label, buses in (("one bus", 1), (f"{n_ports} bus(es)", n_ports)):
-        load = plan.bus_mbps(buses)
+    for label, n_bus in (("1 bus", 1), (f"{n_ports} bus", n_ports)):
+        load = plan.bus_mbps(n_bus)
         verdict = (
-            f"ok, {BUDGET_MBPS - load:.1f} Mbit/s spare"
+            f"ok, {BUDGET_MBPS - load:.1f} Mbps spare"
             if load <= BUDGET_MBPS
-            else f"over by {load - BUDGET_MBPS:.1f} Mbit/s"
+            else f"over by {load - BUDGET_MBPS:.1f} Mbps"
         )
-        print(f"    {label:10s} {load:8.1f} Mbit/s of {BUDGET_MBPS:.1f} -> {verdict}")
+        print(f"    {label:10s} {load:8.1f} Mbps of {BUDGET_MBPS:.1f} -> {verdict}")
 
-    print(
-        f"    max rate {plan.max_rate_hz(1) / 1e6:.2f} Msps on one bus,"
-        f" {plan.max_rate_hz(n_ports) / 1e6:.2f} Msps on {n_ports} bus(es)"
-    )
-    print(f"    this machine has {usb2_buses()} usb 2.0 buses")
+    print(f"INFO: max {plan.max_rate_hz(1) / 1e6:.2f} Msps per usb 2.0 bus")
+    print(f"SET : {plan.max_rate_hz(n_ports) / 1e6:.2f} Msps on {n_ports} usb 2.0 bus")
 
 
 # TODO
 # def cmd_trim(cfg: Config) -> None:
-#     """drop the windows in which any station lost samples"""
+#     """cut the samples that a station lost out of every station"""
 
 #     runs = sorted(path for path in cfg.obs_dir.glob("*") if path.is_dir())
 #     if not runs:
@@ -188,19 +221,19 @@ def cmd_usb(cfg: Config, n_ports: int, n_hackrf: int) -> None:
 #         return None
 
 #     run_dir = runs[-1]
-#     paths = {path.stem: path for path in sorted(run_dir.glob("ant*.bin"))}
+#     paths = {path.stem: path for path in sorted(run_dir.glob("antenna_*.bin"))}
 #     if len(paths) < 3:
 #         print(
 #             f"raifm: {len(paths)} stations, "
 #             "3 or more stations are needed to judge which one lost samples"
 #         )
 #         return None
+
 #     steps, unlocked = find_steps(paths)
 #     print(
 #         f"raifm: {run_dir} {len(paths)} stations, "
 #         f"{len(steps)} steps, {unlocked} windows without a peak"
 #     )
-
 #     for step in steps:
 #         print(f"    at sample {step.at}: {step.station} lost {step.lost}")
 #     if not steps:
@@ -244,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     #     "-m",
     #     "--trim",
     #     action="store_true",
-    #     help="cut lost sample windows out of the latest obs run",
+    #     help="cut the samples a station lost out of the latest obs run",
     # )
     mode.add_argument(
         "-u",
@@ -261,9 +294,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rate", type=float, metavar="HZ", help="override samp_rate")
     parser.add_argument(
         "-y", "--yes", action="store_true", help="confirm test file purge"
-    )
-    parser.add_argument(
-        "--meta", action="store_true", help="save with file_meta_sink headers"
     )
     parser.add_argument(
         "--ports", type=int, default=1, metavar="N", help="usb ports in use"
@@ -330,4 +360,4 @@ def main(argv: list[str] | None = None) -> None:
     elif args.test:
         cmd_test(cfg)
     else:
-        cmd_obs(cfg, args.meta)
+        cmd_obs(cfg)
