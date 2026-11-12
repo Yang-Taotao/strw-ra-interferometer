@@ -5,16 +5,21 @@ Helper utils.
 # supress gnuradio.blocks pylance warning
 # pyright: reportAttributeAccessIssue=false
 
+import dataclasses
 import hashlib
+import json
 import subprocess
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import osmosdr
 from gnuradio import blocks, gr
 
+from raifm import __version__
 from raifm.config import HACKRFCFG, Config
 
 
@@ -115,3 +120,30 @@ def sleep_until(t_start: datetime) -> None:
     """sleep until starting UTC timestamp"""
     while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0:
         time.sleep(max(0.0, remaining - 0.000001))  # 1 micro sec
+
+
+def _text(value: object) -> str:
+    """json run metadata fallback"""
+
+    return value.isoformat() if isinstance(value, datetime) else str(value)
+
+
+def save_metadata(
+    path: Path,
+    kind: str,
+    cfg: Config,
+    stations: list[dict[str, Any]],
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """write the per run metadata in json"""
+
+    body = {
+        "raifm": __version__,
+        "kind": kind,
+        "written_utc": datetime.now(UTC).isoformat(),
+        "argv": sys.argv,
+        "config": dataclasses.asdict(cfg),
+        "stations": stations,
+        **(extra or {}),
+    }
+    path.write_text(json.dumps(body, indent=4, default=_text) + "\n", encoding="utf-8")
