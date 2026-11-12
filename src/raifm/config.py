@@ -19,7 +19,6 @@ class HackrfConfig:
     test_iq: str = "test_iq.bin"  # test hackrf cfg I/Q file
     test_c64: str = "test_c64.bin"  # test gnuradio processed c64
     gen_chunk: int = 1000000
-    meta_segment: int = 1000000  # samples per file_meta_sink segment
     test_seed: int = 42
 
 
