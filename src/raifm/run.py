@@ -75,7 +75,7 @@ def progress(t_end: datetime, width: int = 30) -> None:
         )
         time.sleep(0.2)
     print(
-        f"\r    [{'#' * width}] {total:.1f} / {total:.1f} s",
+        f"\r    [{'#' * width}] {total:.1f} / {total:.1f}",
         file=sys.stderr,
         flush=True,
     )
