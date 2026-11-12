@@ -9,7 +9,7 @@ Radio Astronomy paint-can interferometer project at Leiden Observatory.
   - [tree](#tree)
   - [env](#env)
   - [quickstart](#quickstart)
-  - [work in progress](#work-in-progress)
+  - [conventions](#conventions)
 
 ## tree
 
@@ -74,16 +74,25 @@ python main.py -t --duration 10 --rate 1000000
 # pass -y to confirm purge, otherwise it'll be a dry run
 python main.py -p -y
 
-# obs with file_meta_sink headers instead of a plain file sink
-python main.py --meta
-
-# usb 2.0 budget: n boards over m ports, at [obs] samp_rate
+# usb 2.0 budget: n hackrf over m ports, at [obs] samp_rate
 python main.py -u --hackrf 3 --ports 3
-# boards behind one hub share the hub's single bus
+# all hackrf connected to a usb hub share the hub's bus
+# how much we can push the samp rate dependends on how many independent busses we use
 python main.py -u --hackrf 3 --ports 1
 ```
 
-## work in progress
+The antenna stations are assigned from 1 index under `./config.toml`.
+These hackrf serials are meant to be kept as is,
+we recommend assigning stations to array configs following existing labels.
 
-- a utility to scan the latest observation data and find common lost time samples
-- more console prints to visualize job progress
+## conventions
+
+The timestamps follow `ISO8601` conventions at `UTC` time,
+we can overwrite existing start time configs via:
+
+```sh
+python main.py --start "2026-11-11T11:11:11Z"
+```
+
+The saved binary data files can be found under `./data/obs/`,
+this directory would be automatically populated by the observation starting time.
