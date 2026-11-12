@@ -24,6 +24,7 @@ class Job:
     """set single gnuradio job per hackrf on single core"""
 
     label: str
+    serial: str
     device: str
     antenna: str
     rate_hz: float

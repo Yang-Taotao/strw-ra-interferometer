@@ -20,6 +20,7 @@ from raifm.utils import (
     hackrf_serials,
     hackrf_state,
     hash_gen,
+    save_metadata,
     sha256,
 )
 
@@ -32,6 +33,7 @@ def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[J
     return [
         Job(
             label=station_name(idx),
+            serial=serial,
             device=f"hackrf={serial},bias={cfg.bias}",
             antenna=f"ant_{serial}",
             rate_hz=cfg.samp_rate,
@@ -57,6 +59,7 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
     return [
         Job(
             label=station_name(idx),
+            serial="file",
             device=device,
             antenna="file",
             rate_hz=cfg.test_samp_rate,
@@ -110,6 +113,24 @@ def cmd_obs(cfg: Config) -> None:
         size = job.path_out.stat().st_size
         print(f"    {job.label:12s} {size / 1e9:.2f} GB  {checksums[job.path_out]}")
 
+    save_metadata(
+        run_dir / "metadata.json",
+        "obs",
+        cfg,
+        [
+            {
+                "name": job.label,
+                "serial": job.serial,
+                "file": job.path_out.name,
+                "samples": job.samples,
+                "bytes": job.path_out.stat().st_size,
+                "sha256": checksums[job.path_out],
+            }
+            for job in jobs
+        ],
+    )
+    print(f"raifm: wrote {run_dir / 'metadata.json'}")
+
     print("raifm: hackrf_debug -S readouts")
     for idx, serial in found:
         print(
@@ -150,6 +171,24 @@ def cmd_test(cfg: Config) -> None:
         mark = "PASS" if checksums[job.path_out] == reference else "FAIL"
         print(f"    {mark} {job.label:12s} {checksums[job.path_out]}")
 
+    save_metadata(
+        cfg.test_dir / "run.json",
+        "test",
+        cfg,
+        [
+            {
+                "name": job.label,
+                "file": job.path_out.name,
+                "samples": job.samples,
+                "bytes": job.path_out.stat().st_size,
+                "sha256": checksums[job.path_out],
+                "match": checksums[job.path_out] == reference,
+            }
+            for job in jobs
+        ],
+        {"reference": {"file": ref.name, "sha256": reference}},
+    )
+
     if bad:
         print(
             f"raifm: {len(bad)} of {cfg.n_stations} stations differ: {', '.join(bad)}"
@@ -179,7 +218,7 @@ def cmd_purge(cfg: Config, goahead: bool) -> None:
     for path in targets:
         path.unlink()
 
-    print(f"raifm: unlikned {len(targets)} files, {total / 1e9:.1f} GB")
+    print(f"raifm: unlinked {len(targets)} files, {total / 1e9:.1f} GB")
 
 
 def cmd_usb(cfg: Config, n_ports: int, n_hackrf: int) -> None:
