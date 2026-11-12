@@ -2,6 +2,8 @@
 Hackrf USB 2.0 datarate estimator utils
 """
 
+import json
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,7 +46,6 @@ class UsbPlan:
 
 def usb2_buses() -> int | None:
     """get num of usb 2.0 host bus on local machine"""
-    # TODO: darwin and win32 support
     if sys.platform.startswith("linux"):
         root = Path("/sys/bus/usb/devices")
         return sum(
@@ -53,5 +54,38 @@ def usb2_buses() -> int | None:
             if (path / "speed").exists()
             and (path / "speed").read_text().strip() == "480"
         )
+
+    if sys.platform == "darwin":
+        res = subprocess.run(
+            ["system_profiler", "SPUSBDataType", "-json"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(res.stdout)
+        buses = data.get("SPUSBDataType", [])
+        return sum(
+            1
+            for bus in buses
+            if "USB 2.0 Bus" in bus.get("_name", "")
+            or bus.get("host_controller", "").endswith("EHCI")
+        )
+
+    if sys.platform == "win32":
+        ps_cmd = (
+            "(Get-PnpDevice -Class USB -Status OK | Where-Object { "
+            "$_.FriendlyName -like '*USB 2.0 Root Hub*' -or "
+            "$_.FriendlyName -like '*USB Root Hub (USB 3.0)*' "
+            "}).Count"
+        )
+        res = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        output = res.stdout.strip()
+        return int(output) if output.isdigit() else 0
+
     else:
         return None
