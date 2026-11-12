@@ -6,6 +6,7 @@ Hardware interface.
 # pyright: reportAttributeAccessIssue=false
 
 import multiprocessing
+import sys
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,7 +15,7 @@ from pathlib import Path
 import psutil
 from gnuradio import blocks, gr
 
-from raifm.config import HACKRFCFG, Config
+from raifm.config import Config
 from raifm.utils import osmocom_source, sleep_until
 
 
@@ -30,7 +31,6 @@ class Job:
     path_out: Path
     core: int
     t_start: datetime
-    meta: bool
 
 
 def capture_process(cfg: Config, job: Job) -> None:
@@ -41,16 +41,7 @@ def capture_process(cfg: Config, job: Job) -> None:
 
     src = osmocom_source(cfg, job.device, job.antenna, job.rate_hz)
     head = blocks.head(gr.sizeof_gr_complex, job.samples)
-    if job.meta:
-        sink = blocks.file_meta_sink(
-            gr.sizeof_gr_complex,
-            str(job.path_out),
-            samp_rate=job.rate_hz,
-            complex=True,
-            max_segment_size=HACKRFCFG.meta_segment,
-        )
-    else:
-        sink = blocks.file_sink(gr.sizeof_gr_complex, str(job.path_out), False)
+    sink = blocks.file_sink(gr.sizeof_gr_complex, str(job.path_out), False)
 
     tb = gr.top_block(f"capture_{job.label}")
     tb.connect(src, head, sink)
@@ -61,14 +52,38 @@ def capture_process(cfg: Config, job: Job) -> None:
     tb.run()
 
     print(
-        f"[{job.label}] start +{late:.3f} ms "
+        f"    [{job.label}] started +{late:.6f} ms, "
         f"{job.samples} samples in {time.monotonic() - started:.1f} s",
         flush=True,
     )
 
 
-def run_jobs(cfg: Config, jobs: list[Job]) -> None:
-    """mp job run setup"""
+def progress(t_end: datetime, width: int = 30) -> None:
+    """draw progress bar until t_end, every station runs the same duration"""
+
+    t_begin = datetime.now(UTC)
+    total = (t_end - t_begin).total_seconds()
+    while (remaining := (t_end - datetime.now(UTC)).total_seconds()) > 0:
+        done = total - remaining
+        full = int(width * done / total)
+        bar = "#" * full + "." * (width - full)
+        print(
+            f"\r    [{bar}] {done:5.1f} / {total:.1f} s",
+            end="",
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(0.2)
+    print(
+        f"\r    [{'#' * width}] {total:.1f} / {total:.1f} s",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def run_jobs(cfg: Config, jobs: list[Job], t_end: datetime) -> None:
+    """mp job run setup, every station armed before the common timestamp"""
+
     context = multiprocessing.get_context("spawn")
     procs = [
         context.Process(target=capture_process, args=(cfg, job), name=job.label)
@@ -77,5 +92,18 @@ def run_jobs(cfg: Config, jobs: list[Job]) -> None:
 
     for proc in procs:
         proc.start()
+
+    t_start = jobs[0].t_start.isoformat()
+    print(f"raifm: {len(jobs)} hackrf armed, waiting for {t_start}", flush=True)
+
+    sleep_until(jobs[0].t_start)
+    print(
+        f"raifm: {len(jobs)} gnuradio processes started, "
+        f"recording {jobs[0].samples} samples each",
+        flush=True,
+    )
+    progress(t_end)
+
     for proc in procs:
         proc.join()
+    print(f"raifm: {len(jobs)} stations finished", flush=True)
