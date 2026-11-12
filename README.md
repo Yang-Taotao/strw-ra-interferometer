@@ -10,6 +10,7 @@ Radio Astronomy paint-can interferometer project at Leiden Observatory.
   - [env](#env)
   - [quickstart](#quickstart)
   - [conventions](#conventions)
+  - [metadata sidecar](#metadata-sidecar)
 
 ## tree
 
@@ -96,3 +97,36 @@ python main.py --start "2026-11-11T11:11:11Z"
 
 The saved binary data files can be found under `./data/obs/`,
 this directory would be automatically populated by the observation starting time.
+
+## metadata sidecar
+
+Per-run parameters are automatically written to a `.json` sidecar.
+Example directory tree under `./data`:
+
+```sh
+.
+├── obs
+│   └── 20261111T111111Z
+│       ├── antenna_01.bin
+│       ├── antenna_02.bin
+│       └── metadata.json
+└── test
+    ├── antenna_01.bin
+    ├── antenna_02.bin
+    ├── antenna_03.bin
+    ├── antenna_04.bin
+    ├── antenna_05.bin
+    ├── antenna_06.bin
+    ├── antenna_07.bin
+    ├── antenna_08.bin
+    ├── antenna_09.bin
+    ├── antenna_10.bin
+    ├── metadata.json
+    ├── test_c64.bin
+    └── test_iq.bin
+```
+
+The metadata contains source parameters from `config.toml`,
+actual metadata saves enteries from cli overrides.
+The aim is to keep `config.toml` atomic across devices.
+The `metadata.json` files are preserved across `-p` purge calls for tests.
