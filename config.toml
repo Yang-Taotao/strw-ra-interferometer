@@ -8,23 +8,23 @@ central_freq = 1.418e+9               # 1418 MHz central frequency
 n_chan       = 1                      # num of ch per antenna
 
 [gain]
-rf = 0 # rf gain in db
-if = 0 # if gain in db
-bb = 0 # bb gain in db
+rf = 14 # rf gain in db
+if = 32 # if gain in db
+bb = 32 # bb gain in db
 
 [hackrf]
 n_stations = 10 # number of antennas
 serial_num = [
-"0000000000000000", # station 0
-"0000000000000001", # station 1
-"0000000000000002", # station 2
-"0000000000000003", # station 3
-"0000000000000004", # station 4
-"0000000000000005", # station 5
-"0000000000000006", # station 6
-"0000000000000007", # station 7
-"0000000000000008", # station 8
-"0000000000000009", # station 9
+"0000000000000000a06063c8247a835f", # station 01
+"0000000000000000325866e622b64e23", # station 02
+"0000000000000000a06063c825492b5f", # station 03
+"0000000000000000a06063c822827f5f", # station 04
+"0000000000000000a06063c82372395f", # station 05
+"0000000000000000909864c8366414cf", # station 06
+"0000000000000000a06063c8247a735f", # station 07
+"0000000000000000a06063c82299575f", # station 08
+"0000000000000000a06063c8258c895f", # station 09
+"0000000000000000a06063c82410685f", # station 10
 ]
 bias = 1 # bias tee
 

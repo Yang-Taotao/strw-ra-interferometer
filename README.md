@@ -1,15 +1,23 @@
 # strw-ra-interferometer
 
-Radio Astronomy paint-can interferometer project at Leiden Observatory.
+**Radio Astronomy paint-can interferometer project** at [Leiden Observatory](https://www.strw.leidenuniv.nl/).
+
+> [!CAUTION]
+> Work in progress project
+>
+> Breaking changes may be frequent, see `README` for instructions.
 
 ## toc
 
 - [strw-ra-interferometer](#strw-ra-interferometer)
   - [toc](#toc)
   - [tree](#tree)
-  - [env](#env)
   - [quickstart](#quickstart)
-  - [work in progress](#work-in-progress)
+    - [prep](#prep)
+    - [env](#env)
+    - [cli](#cli)
+  - [conventions](#conventions)
+  - [metadata sidecar](#metadata-sidecar)
 
 ## tree
 
@@ -17,19 +25,35 @@ The current project is laid out with:
 
 ```sh
 .
-├── config.toml
-├── data
+├── config.toml     # config file
+├── data            # data directory
+│   ├── obs
+│   └── test
 ├── dev
-├── env.yml
+├── env.yml         # conda env source
 ├── LICENSE
-├── main.py
+├── main.py         # cli
 ├── pyproject.toml
 ├── README.md
 └── src
-    └── raifm
+    └── raifm       # src
 ```
 
-## env
+## quickstart
+
+### prep
+
+First clone the project to a directory and enter:
+
+```sh
+git clone https://github.com/Yang-Taotao/strw-ra-interferometer.git
+cd strw-ra-interferometer
+```
+
+### env
+
+> [!IMPORTANT]
+> Make sure `miniforge3` or equivalent is installed.
 
 The dependencies are handled entirely by `conda`.
 Create and activate this `env` from `./env.yml`:
@@ -45,14 +69,14 @@ We then do a quick editable install of the current package:
 pip install -e .
 ```
 
-Current version should read `0.1.0`:
+Current version should read `0.2.0`:
 
 ```sh
-python main.py -v
-raifm 0.1.0
+raifm -v
+raifm 0.2.0
 ```
 
-## quickstart
+### cli
 
 Run operations from cli:
 
@@ -60,21 +84,77 @@ Run operations from cli:
 # the default
 # this will trigger actual obsevation from real hackrf data stream
 # optional cli flag -o
-python main.py
+raifm
 
 # run tests
 # this goes: [fake hackrf c64 data] -> [osmocom source] -> c64 bin
 # test runs are armed in parallel and starts roughly within 1ms with each other
-python main.py -t
+raifm -t
 # optionally set duration (s) and sample rate (Hz)
-python main.py -t --duration 10 --rate 1000000
+raifm -t --duration 10 --rate 1000000
 
 # purge
 # unlink test generated .bin files under ./data/test
 # pass -y to confirm purge, otherwise it'll be a dry run
-python main.py -p -y
+raifm -p -y
+
+# usb 2.0 budget: n hackrf over m ports, at [obs] samp_rate
+raifm -u --hackrf 3 --ports 3
+# all hackrf connected to a usb hub share the hub's bus
+# how much we can push the samp rate dependends on how many independent busses we use
 ```
 
-## work in progress
+> [!NOTE]
+> The antenna stations are assigned from 1 index under `./config.toml`.
+>
+> These hackrf serials are meant to be kept as is.
+>
+> We recommend assigning stations to array configs following existing labels.
 
-Future sections are work in progress.
+## conventions
+
+The timestamps follow `ISO8601` conventions at `UTC` time,
+we can overwrite existing start time configs via:
+
+```sh
+raifm --start "2026-11-11T11:11:11Z"
+```
+
+The saved binary data files can be found under `./data/obs/`,
+this directory would be automatically populated by the observation starting time.
+
+## metadata sidecar
+
+Per-run parameters are automatically written to a `.json` sidecar.
+Example directory tree under `./data`:
+
+```sh
+.
+├── obs
+│   └── 20261111T111111Z
+│       ├── antenna_01.bin
+│       ├── antenna_02.bin
+│       └── metadata.json
+└── test
+    ├── antenna_01.bin
+    ├── antenna_02.bin
+    ├── antenna_03.bin
+    ├── antenna_04.bin
+    ├── antenna_05.bin
+    ├── antenna_06.bin
+    ├── antenna_07.bin
+    ├── antenna_08.bin
+    ├── antenna_09.bin
+    ├── antenna_10.bin
+    ├── metadata.json
+    ├── test_c64.bin
+    └── test_iq.bin
+```
+
+> [!NOTE]
+> The metadata contains source parameters from `config.toml`,
+> actual metadata saves enteries from cli overrides.
+>
+> The aim is to keep `config.toml` atomic across devices.
+>
+> The `metadata.json` files are preserved across `-p` purge calls for tests.
