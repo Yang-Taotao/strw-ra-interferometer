@@ -7,6 +7,10 @@ from pathlib import Path
 
 from raifm.config import HACKRFCFG
 
+import json
+import subprocess
+import sys
+
 LINK_MBPS = 480.0
 OVERHEAD = 0.80
 BUDGET_MBPS = LINK_MBPS * OVERHEAD
@@ -41,11 +45,60 @@ class UsbPlan:
         return BUDGET_MBPS * 1e6 / (boards * HACKRFCFG.size_i8 * 8)
 
 
-def usb2_buses() -> int:
-    """get num of usb 2.0 host bus on local machine"""
-    root = Path("/sys/bus/usb/devices")
-    return sum(
-        1
-        for path in root.glob("usb*")
-        if (path / "speed").exists() and (path / "speed").read_text().strip() == "480"
-    )
+
+def usb2_buses() -> int | None:
+    """Get the number of independent USB 2.0 host buses on Linux, macOS, or Windows."""
+    if sys.platform.startswith("linux"):
+        root = Path("/sys/bus/usb/devices")
+        if not root.exists():
+            return 0
+        return sum(
+            1
+            for path in root.glob("usb*")
+            if (path / "speed").exists() and (path / "speed").read_text().strip() == "480"
+        )
+
+    if sys.platform == "darwin":
+        try:
+            res = subprocess.run(
+                ["system_profiler", "SPUSBDataType", "-json"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            data = json.loads(res.stdout)
+            buses = data.get("SPUSBDataType", [])
+            # On macOS, USB 2.0 host buses are explicitly labeled as 'USB 2.0 Bus'
+            # (or have a host_controller ending in EHCI on legacy Intel Macs)
+            return sum(
+                1
+                for bus in buses
+                if "USB 2.0 Bus" in bus.get("_name", "")
+                or bus.get("host_controller", "").endswith("EHCI")
+            )
+        except (subprocess.SubprocessError, json.JSONDecodeError):
+            return None
+
+    if sys.platform == "win32":
+        try:
+            # Each active USB 2.0 Root Hub (EHCI) or USB 3.0 Root Hub (xHCI)
+            # exposes exactly one independent USB 2.0 protocol bus.
+            ps_cmd = (
+                "(Get-PnpDevice -Class USB -Status OK | Where-Object { "
+                "$_.FriendlyName -like '*USB 2.0 Root Hub*' -or "
+                "$_.FriendlyName -like '*USB Root Hub (USB 3.0)*' "
+                "}).Count"
+            )
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_cmd],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            output = res.stdout.strip()
+            return int(output) if output.isdigit() else 0
+        except (subprocess.SubprocessError, ValueError):
+            return None
+
+    return None
+
