@@ -2,6 +2,7 @@
 Configs.
 """
 
+import json
 import tomllib
 from dataclasses import dataclass
 from datetime import datetime
@@ -82,3 +83,31 @@ def load_config(path: Path = DEFAULT_CONFIG) -> Config:
         test_t_total=cfg["test"]["t_total"],
         test_samp_rate=cfg["test"]["samp_rate"],
     )
+
+
+@dataclass(frozen=True)
+class MetadataCFG:
+    """per run metadata cfg"""
+
+    n_stations: int
+    serial_num: list[str]
+    t_start: datetime
+    t_total: float
+    samp_rate: float
+    central_freq: float
+    gain_rf: int
+    gain_if: int
+    gain_bb: int
+    n_chan: int
+    bias: int
+    obs_dir: str
+    test_dir: str
+    test_t_total: float
+    test_samp_rate: float
+
+    @classmethod
+    def parse_json(cls, path: str | Path) -> MetadataCFG:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        cfg = data["config"]
+        cfg["t_start"] = datetime.fromisoformat(cfg["t_start"])
+        return cls(**cfg)
