@@ -167,3 +167,40 @@ Example directory tree under `./data`:
 > The aim is to keep `config.toml` atomic across devices.
 >
 > The `metadata.json` files are preserved across `-p` purge calls for tests.
+
+To parse the `metadata.json` back in for analysis in `py`:
+
+```py
+from raifm import config
+
+# set path and parse json to dataclass
+test_metadata_path = "./data/test/run.json"
+TestCFG = config.MetadataCFG.parse_json(obs_metadata_path)
+
+# read attr - example to get n_stations
+n_stations = TestCFG.n_stations
+```
+
+Currently, we support the following metadata:
+
+```sh
+@dataclass(frozen=True)
+class MetadataCFG:
+    """per run metadata cfg"""
+
+    n_stations: int
+    serial_num: list[str]
+    t_start: datetime
+    t_total: float
+    samp_rate: float
+    central_freq: float
+    gain_rf: int
+    gain_if: int
+    gain_bb: int
+    n_chan: int
+    bias: int
+    obs_dir: str
+    test_dir: str
+    test_t_total: float
+    test_samp_rate: float
+```
