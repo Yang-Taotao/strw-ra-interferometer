@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import psutil
-from gnuradio import blocks, gr
 
 from raifm.config import Config
 from raifm.utils import osmocom_source, sleep_until
@@ -36,6 +35,8 @@ class Job:
 
 def capture_process(cfg: Config, job: Job) -> None:
     """capture one station per core, start on the common timestamp"""
+
+    from gnuradio import blocks, gr
 
     p = psutil.Process()
     p.cpu_affinity([job.core])
