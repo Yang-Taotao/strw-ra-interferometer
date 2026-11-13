@@ -87,40 +87,63 @@ raifm 0.2.0
 
 ### cli
 
-Run operations from cli:
+> [!IMPORTANT]
+> Run operations from cli.
+
+The default mode is observation,
+this will trigger actual obsevation from real `hackrf` data stream.
+An optional flag of `-o` can be added to achieve the same effect.
 
 ```sh
-# the default
-# this will trigger actual obsevation from real hackrf data stream
-# optional cli flag -o
 raifm
-
-# run tests
-# this goes: [fake hackrf c64 data] -> [osmocom source] -> c64 bin
-# test runs are armed in parallel and starts roughly within 1ms with each other
-raifm -t
-# optionally set duration (s) and sample rate (Hz)
-raifm -t --duration 10 --rate 1000000
-
-# purge
-# unlink test generated .bin files under ./data/test
-# pass -y to confirm purge, otherwise it'll be a dry run
-raifm -p -y
-
-# usb 2.0 budget: n hackrf over m ports, at [obs] samp_rate
-raifm -u --hackrf 3 --ports 3
-# all hackrf connected to a usb hub share the hub's bus
-# how much we can push the samp rate dependends on how many independent busses we use
 ```
+
+A test mode is included with flag `-t`,
+this goes: `[fake hackrf c64 data] -> [osmocom source] -> c64 bin`.
+Test runs are armed in parallel and starts roughly within ~0.01 ms with each other:
+
+```sh
+raifm -t
+```
+
+Optionally set duration (s) and sample rate (Hz) as cli overrides:
+
+```sh
+raifm -t --duration 10 --rate 1000000
+```
+
+These tests will then generate some amount of data.
+The data size is controlled by test observation duration and sampling rate.
+We can purge these test data via `-p` flag.
+This unlinks the test data once `-y` flag is parsed to confirm the operation:
+
+```sh
+raifm -p -y
+```
+
+To check for max sampling rate for your USB 2.0 bus budget on your local device,
+use `-u` flag and specify the number of `hackrf`
+and number of USB `ports` connected on your laptop.
+For example, this checks for 4 `hackrf` devices connected to 2 USB hubs
+that is then connected to 2 USB ports on the motherboard.
+
+```sh
+raifm -u --hackrf 4 --ports 2
+```
+
+> [>!NOTE]
+> All `hackrf` connected to a USB hub share the hub's bus
+>
+> How much we can push the samp rate dependends on how many independent busses we use
+
+## conventions
 
 > [!NOTE]
 > The antenna stations are assigned from 1 index under `./config.toml`.
 >
-> These hackrf serials are meant to be kept as is.
+> These `hackrf` serials are meant to be kept as is.
 >
 > We recommend assigning stations to array configs following existing labels.
-
-## conventions
 
 The timestamps follow `ISO8601` conventions at `UTC` time,
 we can overwrite existing start time configs via:
