@@ -114,6 +114,9 @@ def osmocom_source(
     src.set_center_freq(cfg.central_freq)
     src.set_antenna(antenna)
 
+    # src.set_clock_source("External 1PPS", 0)
+    # src.set_time_source("External", 0)
+
     for chan in range(cfg.n_chan):
         src.set_gain(cfg.gain_rf, "RF", chan)
         src.set_gain(cfg.gain_if, "IF", chan)
