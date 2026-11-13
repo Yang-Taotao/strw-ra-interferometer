@@ -34,7 +34,7 @@ class Config:
     serial_num: tuple[str, ...]
     t_start: datetime
     t_total: float
-    samp_rate: float
+    samp_rate: int
     central_freq: float
     gain_rf: int
     gain_if: int
@@ -44,7 +44,7 @@ class Config:
     obs_dir: Path
     test_dir: Path
     test_t_total: float
-    test_samp_rate: float
+    test_samp_rate: int
 
     @property
     def n_samples(self) -> int:
@@ -93,7 +93,7 @@ class MetadataCFG:
     serial_num: list[str]
     t_start: datetime
     t_total: float
-    samp_rate: float
+    samp_rate: int
     central_freq: float
     gain_rf: int
     gain_if: int
@@ -103,7 +103,7 @@ class MetadataCFG:
     obs_dir: str
     test_dir: str
     test_t_total: float
-    test_samp_rate: float
+    test_samp_rate: int
 
     @classmethod
     def parse_json(cls, path: str | Path) -> MetadataCFG:

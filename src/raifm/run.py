@@ -26,7 +26,7 @@ class Job:
     serial: str
     device: str
     antenna: str
-    rate_hz: float
+    rate_hz: int
     samples: int
     path_out: Path
     core: int
