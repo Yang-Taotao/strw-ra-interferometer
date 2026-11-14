@@ -54,8 +54,12 @@ cd strw-ra-interferometer
 
 > [!IMPORTANT]
 > Make sure `miniforge3` or equivalent is installed.
+>
+> Alternatively, if you are using `uv` or py `venv`,
+> make sure you have system site packages
+> such as `hackrf` and `gnuradio` installed locally.
 
-The dependencies are handled entirely by `conda`.
+The dependencies can be entirely handled by `conda`.
 Create and activate this `env` from `./env.yml`:
 
 ```sh
@@ -69,20 +73,25 @@ We then do a quick editable install of the current package:
 pip install -e .
 ```
 
-> [!IMPORTANT]
-> No `conda` needed if the host has `gnuradio`, `gr-osmosdr`, and `hackrf`.
->
-> Apt installed ones are separated from the uv venv, thus you need:
->
-> ```sh
-> sudo apt install gnuradio gr-osmosdr hackrf
-> PYTHONPATH=src python3 -m raifm.cli -t --duration 5
-> ```
-
 Current version should read `0.2.1`:
 
 ```sh
 raifm -v
+raifm 0.2.1
+```
+
+> [!IMPORTANT]
+> No `conda` needed if the host has `gnuradio`, `gr-osmosdr`, and `hackrf`.
+>
+> If these packages are managed as system site packages via package managers
+> such as `apt`, `brew`, and `pacman`,
+> then `uv` will not be managing these system wide packages in the `uv` `.venv`.
+
+With `uv` and `apt`, we do:
+
+```sh
+sudo apt install gnuradio gr-osmosdr hackrf
+PYTHONPATH=src python3 -m raifm.cli -v
 raifm 0.2.1
 ```
 
@@ -159,8 +168,17 @@ we can overwrite existing start time configs via:
 raifm --start "2026-11-11T11:11:11Z"
 ```
 
+Additional overrides such as a 600 seconds observation duration can be added:
+
+```sh
+raifm --start "2026-11-11T11:11:11Z" --duration 600
+```
+
 The saved binary data files can be found under `./data/obs/`,
 this directory would be automatically populated by the observation starting time.
+
+After an observation finishes,
+we check `hackrf_debug -S` for all connected `hackrf`.
 
 ## metadata sidecar
 
