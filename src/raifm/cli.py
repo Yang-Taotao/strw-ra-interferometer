@@ -24,6 +24,7 @@ from raifm.utils import (
     hash_gen,
     save_metadata,
     sha256,
+    write_sha256,
 )
 
 if TYPE_CHECKING:
@@ -129,6 +130,7 @@ def cmd_obs(cfg: Config) -> None:
     checksums = hash_gen([job.path_out for job in jobs])
     for job in jobs:
         size = job.path_out.stat().st_size
+        write_sha256(job.path_out, checksums[job.path_out])
         print(f"    {job.label:12s} {size / 1e9:.2f} GB  {checksums[job.path_out]}")
 
     save_metadata(
@@ -197,6 +199,7 @@ def cmd_test(cfg: Config) -> None:
 
     for job in jobs:
         mark = "PASS" if checksums[job.path_out] == reference else "FAIL"
+        write_sha256(job.path_out, checksums[job.path_out])
         print(f"    {mark} {job.label:12s} {checksums[job.path_out]}")
 
     save_metadata(
@@ -247,7 +250,7 @@ def cmd_purge(cfg: Config, goahead: bool) -> None:
     """purge test bin"""
 
     targets = [
-        path for path in sorted(cfg.test_dir.rglob("ant*.bin")) if path.is_file()
+        path for path in sorted(cfg.test_dir.rglob("ant*.bin*")) if path.is_file()
     ]
     if not targets:
         print("raifm: nothing to purge")

@@ -34,6 +34,12 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
+def write_sha256(path: Path, digest: str) -> None:
+    """write the coreutils sha256 file next to a data file"""
+
+    Path(f"{path}.sha256").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+
+
 def hash_gen(paths: list[Path]) -> dict[Path, str]:
     """get all sha256 hash for file in list"""
     return {path: sha256(path) for path in paths}
