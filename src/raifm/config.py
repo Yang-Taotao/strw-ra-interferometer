@@ -46,6 +46,7 @@ class Config:
     test_dir: Path
     test_t_total: float
     test_samp_rate: int
+    buffer: int = 0
 
     @property
     def n_samples(self) -> int:
@@ -78,6 +79,7 @@ def load_config(path: Path = DEFAULT_CONFIG) -> Config:
         gain_if=cfg["gain"]["if"],
         gain_bb=cfg["gain"]["bb"],
         n_chan=cfg["obs"]["n_chan"],
+        buffer=cfg["obs"]["buffer"],
         bias=cfg["hackrf"]["bias"],
         obs_dir=Path(cfg["data"]["obs"]),
         test_dir=Path(cfg["data"]["test"]),
@@ -105,6 +107,7 @@ class MetadataCFG:
     test_dir: str
     test_t_total: float
     test_samp_rate: int
+    buffer: int = 0
 
     @classmethod
     def parse_json(cls, path: str | Path) -> Self:

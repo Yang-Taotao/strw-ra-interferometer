@@ -393,6 +393,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--ports", type=int, default=1, metavar="N", help="usb ports in use"
     )
     parser.add_argument(
+        "--buffer",
+        type=int,
+        metavar="N",
+        help="gnuradio buffer (Minoutbuf), default is 0",
+    )
+    parser.add_argument(
         "--hackrf",
         type=int,
         metavar="N",
@@ -410,6 +416,9 @@ def cli_overrides(cfg: Config, args: argparse.Namespace) -> Config:
     """cli args overrides"""
 
     cli_cfg: dict[str, Any] = {}
+
+    if args.buffer is not None:
+        cli_cfg["buffer"] = args.buffer
 
     if args.test:
         if args.duration is not None:

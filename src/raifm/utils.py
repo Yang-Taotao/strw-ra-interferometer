@@ -160,6 +160,10 @@ def osmocom_source(
         src.set_gain(cfg.gain_if, "IF", chan)
         src.set_gain(cfg.gain_bb, "BB", chan)
 
+    if cfg.buffer > 0:
+        with quiet():
+            src.set_min_output_buffer(0, cfg.buffer)
+
     return src
 
 

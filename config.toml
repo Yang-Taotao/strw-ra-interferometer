@@ -6,6 +6,7 @@ t_total      = 100.0                  # total obs time in seconds
 samp_rate    = 10000000               # 10MHz sampling rate
 central_freq = 1.4204e+9              # 1420.4 MHz central frequency
 n_chan       = 2048                   # num of ch per antenna
+buffer       = 0                      # gnuradio min output buffer items, default 0
 
 [gain]
 rf = 14 # rf gain in db
