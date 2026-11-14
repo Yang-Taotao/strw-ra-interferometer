@@ -17,6 +17,7 @@
     - [env](#env)
     - [cli](#cli)
   - [conventions](#conventions)
+  - [buffers](#buffers)
   - [metadata sidecar](#metadata-sidecar)
     - [metadata](#metadata)
     - [file checksum](#file-checksum)
@@ -170,20 +171,34 @@ The timestamps follow `ISO8601` conventions at `UTC` time,
 we can overwrite existing start time configs via:
 
 ```sh
-raifm --start "2026-11-11T11:11:11Z"
+raifm --start "20261111T111111Z"
 ```
 
 Additional overrides such as a 600 seconds observation duration can be added:
 
 ```sh
-raifm --start "2026-11-11T11:11:11Z" --duration 600
+raifm --start "20261111T111111Z" --duration 600
 ```
 
 The saved binary data files can be found under `./data/obs/`,
 this directory would be automatically populated by the observation starting time.
 
+For details on `data` directory structure, see [metadata sidecar](#metadata-sidecar).
+
 After an observation finishes,
 we check `hackrf_debug -S` for all connected `hackrf`.
+
+## buffers
+
+Two buffers exists for `osmocom source`: `Minoutbuf` and `Maxoutbuf`.
+The default values for these enteries are zero.
+
+This can be overwritten via cli,
+for example, we set `Minoutbuf` to 100000 for a test mode run:
+
+```sh
+raifm -t --buffer 100000
+```
 
 ## metadata sidecar
 
@@ -256,6 +271,7 @@ class MetadataCFG:
     test_dir: str
     test_t_total: float
     test_samp_rate: float
+    buffer: int
 ```
 
 ### file checksum
