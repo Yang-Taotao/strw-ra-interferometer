@@ -60,13 +60,14 @@ def capture_process(cfg: Config, job: Job) -> None:
     )
 
 
-def progress(t_end: datetime, width: int = 30) -> None:
-    """draw progress bar until t_end, every station runs the same duration"""
+def progress(total: float, width: int = 40) -> None:
+    """draw progress bar for total seconds, every station runs the same duration"""
+
+    if total <= 0:
+        return
 
     t_begin = datetime.now(UTC)
-    total = (t_end - t_begin).total_seconds()
-    while (remaining := (t_end - datetime.now(UTC)).total_seconds()) > 0:
-        done = total - remaining
+    while (done := (datetime.now(UTC) - t_begin).total_seconds()) < total:
         full = int(width * done / total)
         bar = "#" * full + "." * (width - full)
         print(
@@ -75,7 +76,7 @@ def progress(t_end: datetime, width: int = 30) -> None:
             file=sys.stderr,
             flush=True,
         )
-        time.sleep(0.2)
+        time.sleep(0.1)
     print(
         f"\r    [{'#' * width}] {total:.1f} / {total:.1f}",
         file=sys.stderr,
@@ -83,7 +84,7 @@ def progress(t_end: datetime, width: int = 30) -> None:
     )
 
 
-def run_jobs(cfg: Config, jobs: list[Job], t_end: datetime) -> None:
+def run_jobs(cfg: Config, jobs: list[Job]) -> None:
     """mp job run setup, every station armed before the common timestamp"""
 
     context = multiprocessing.get_context("spawn")
@@ -96,6 +97,13 @@ def run_jobs(cfg: Config, jobs: list[Job], t_end: datetime) -> None:
         proc.start()
 
     t_start = jobs[0].t_start.isoformat()
+    late = (datetime.now(UTC) - jobs[0].t_start).total_seconds()
+    if late > 0:
+        print(
+            f"raifm: start time was {late:.1f} s ago, "
+            "stations start as soon as they arm",
+            flush=True,
+        )
     print(f"raifm: {len(jobs)} hackrf armed, waiting for {t_start}", flush=True)
 
     sleep_until(jobs[0].t_start)
@@ -104,7 +112,7 @@ def run_jobs(cfg: Config, jobs: list[Job], t_end: datetime) -> None:
         f"recording {jobs[0].samples} samples each",
         flush=True,
     )
-    progress(t_end)
+    progress(jobs[0].samples / jobs[0].rate_hz)
 
     for proc in procs:
         proc.join()

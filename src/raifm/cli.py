@@ -125,7 +125,7 @@ def cmd_obs(cfg: Config) -> None:
     jobs = obs_jobs(cfg, run_dir, found)
     from raifm.run import run_jobs
 
-    run_jobs(cfg, jobs, cfg.t_start + timedelta(seconds=cfg.t_total))
+    run_jobs(cfg, jobs)
 
     checksums = hash_gen([job.path_out for job in jobs])
     for job in jobs:
@@ -189,7 +189,7 @@ def cmd_test(cfg: Config) -> None:
     jobs = test_jobs(cfg, ref, t_start)
     from raifm.run import run_jobs
 
-    run_jobs(cfg, jobs, t_start + timedelta(seconds=cfg.test_t_total))
+    run_jobs(cfg, jobs)
 
     reference = sha256(ref)
     checksums = hash_gen([job.path_out for job in jobs])

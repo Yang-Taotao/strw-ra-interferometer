@@ -169,8 +169,12 @@ def osmocom_source(
 
 def sleep_until(t_start: datetime) -> None:
     """sleep until starting UTC timestamp"""
-    while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0:
-        time.sleep(max(0.0, remaining - 0.000001))  # 1 micro sec
+
+    while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0.001:
+        time.sleep(remaining - 0.001)
+
+    while datetime.now(UTC) < t_start:
+        pass
 
 
 def _text(value: object) -> str:
