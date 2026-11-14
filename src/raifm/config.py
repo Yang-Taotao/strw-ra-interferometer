@@ -7,6 +7,7 @@ import tomllib
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Self
 
 DEFAULT_CONFIG = Path("config.toml")
 
@@ -106,7 +107,7 @@ class MetadataCFG:
     test_samp_rate: int
 
     @classmethod
-    def parse_json(cls, path: str | Path) -> MetadataCFG:
+    def parse_json(cls, path: str | Path) -> Self:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         cfg = data["config"]
         cfg["t_start"] = datetime.fromisoformat(cfg["t_start"])
