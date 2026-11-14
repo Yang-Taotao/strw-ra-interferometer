@@ -122,6 +122,12 @@ This unlinks the test data once `-y` flag is parsed to confirm the operation:
 raifm -p -y
 ```
 
+We check the `CLKIN` status on all configured `hackrf` with `-c` flag:
+
+```sh
+raifm -c
+```
+
 To check for max sampling rate for your USB 2.0 bus budget on your local device,
 use `-u` flag and specify the number of `hackrf`
 and number of USB `ports` connected on your laptop.
