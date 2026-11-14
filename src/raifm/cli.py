@@ -2,17 +2,18 @@
 CLI setup.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from raifm import __version__
 from raifm.config import DEFAULT_CONFIG, HACKRFCFG, Config, load_config, station_name
-from raifm.run import Job, run_jobs
 from raifm.usb import BUDGET_MBPS, UsbPlan, usb2_buses
 from raifm.utils import (
     convert,
@@ -24,9 +25,14 @@ from raifm.utils import (
     sha256,
 )
 
+if TYPE_CHECKING:
+    from raifm.run import Job
+
 
 def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[Job]:
     """gnuradio jobs for the connected hackrf"""
+
+    from raifm.run import Job
 
     ncores = os.cpu_count() or 1
 
@@ -48,6 +54,8 @@ def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[J
 
 def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
     """gnuradio jobs for test"""
+
+    from raifm.run import Job
 
     ncores = os.cpu_count() or 1
     device = (
@@ -106,6 +114,8 @@ def cmd_obs(cfg: Config) -> None:
     )
 
     jobs = obs_jobs(cfg, run_dir, found)
+    from raifm.run import run_jobs
+
     run_jobs(cfg, jobs, cfg.t_start + timedelta(seconds=cfg.t_total))
 
     checksums = hash_gen([job.path_out for job in jobs])
@@ -159,6 +169,8 @@ def cmd_test(cfg: Config) -> None:
     convert(iq, ref)
 
     jobs = test_jobs(cfg, ref, t_start)
+    from raifm.run import run_jobs
+
     run_jobs(cfg, jobs, t_start + timedelta(seconds=cfg.test_t_total))
 
     reference = sha256(ref)
@@ -400,3 +412,7 @@ def main(argv: list[str] | None = None) -> None:
         cmd_test(cfg)
     else:
         cmd_obs(cfg)
+
+
+if __name__ == "__main__":
+    main()

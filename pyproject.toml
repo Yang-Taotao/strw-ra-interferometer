@@ -7,10 +7,21 @@ name            = "raifm"
 dynamic         = ["version"]
 description     = "Radio astronomy paint-can radio interferometer project at strw."
 readme          = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 license         = "MIT"
 license-file    = ["LICENSE"]
 authors         = [{ name = "Taotao Yang", email = "tyang@strw.leidenuniv.nl" }]
+dependencies = [
+    "astropy>=8.0.2",
+    "matplotlib>=3.11.2",
+    "mypy>=2.4.1",
+    "numpy>=2.5.4",
+    "psutil>=7.2.2",
+    "ruff>=0.17.5",
+    "scienceplots>=2.2.2",
+    "scipy>=1.18.1",
+    "tqdm>=4.70.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/Yang-Taotao/strw-ra-interferometer"
@@ -25,7 +36,7 @@ path = "src/raifm/__init__.py"
 packages = ["src/raifm"]
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length    = 88
 src            = ["src"]
 extend-exclude = ["dev", "notebooks", "data", "docs"]
@@ -38,7 +49,7 @@ extend-select = ["B", "N", "SIM", "NPY", "PTH", "ANN", "RUF"]
 known-first-party = ["raifm"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 files          = ["src"]
 mypy_path      = "src"
 exclude        = ["dev", "data", "docs"]

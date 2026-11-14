@@ -2,9 +2,10 @@
 Helper utils.
 """
 
+from __future__ import annotations
+
 # supress gnuradio.blocks pylance warning
 # pyright: reportAttributeAccessIssue=false
-
 import dataclasses
 import hashlib
 import json
@@ -13,14 +14,15 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import osmosdr
-from gnuradio import blocks, gr
 
 from raifm import __version__
 from raifm.config import HACKRFCFG, Config
+
+if TYPE_CHECKING:
+    import osmosdr
 
 
 def sha256(path: Path) -> str:
@@ -72,6 +74,8 @@ def gen_test_iq(path: Path, samples: int) -> None:
 
 def convert(path_in: Path, path_out: Path) -> None:
     """cast mock hackrf int8 to c64 via gnuradio"""
+    from gnuradio import blocks, gr
+
     tb = gr.top_block("i8_to_c64")
 
     src = blocks.file_source(gr.sizeof_char, str(path_in), False)
@@ -102,6 +106,8 @@ def osmocom_source(
     rate_hz: float,
 ) -> osmosdr.source:
     """gnuradio osmocom src block"""
+    import osmosdr
+
     src = osmosdr.source(device)
 
     src.set_sample_rate(rate_hz)

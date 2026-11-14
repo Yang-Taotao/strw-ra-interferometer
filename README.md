@@ -69,6 +69,15 @@ We then do a quick editable install of the current package:
 pip install -e .
 ```
 
+> [!NOTE]
+> No `conda` needed if the host has `gnuradio`, `gr-osmosdr`, and `hackrf`.
+> Apt installed ones are separated from the uv venv, thus you need:
+>
+> ```sh
+> sudo apt install gnuradio gr-osmosdr hackrf
+> PYTHONPATH=src python3 -m raifm.cli -t --duration 5
+> ```
+
 Current version should read `0.2.0`:
 
 ```sh
