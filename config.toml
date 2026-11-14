@@ -3,9 +3,10 @@
 [obs]
 t_start      = "2026-11-01T00:00:00Z" # UTC timestamp for starting obs
 t_total      = 100.0                  # total obs time in seconds
-samp_rate    = 1.0e+7                 # 10MHz sampling rate
-central_freq = 1.418e+9               # 1418 MHz central frequency
-n_chan       = 1                      # num of ch per antenna
+samp_rate    = 10000000               # 10MHz sampling rate
+central_freq = 1.4204e+9              # 1420.4 MHz central frequency
+n_chan       = 2048                   # num of ch per antenna
+buffer       = 0                      # gnuradio min output buffer items, default 0
 
 [gain]
 rf = 14 # rf gain in db
@@ -33,5 +34,5 @@ obs  = "data/obs"  # observation data repo
 test = "data/test" # test data repo
 
 [test]
-t_total   = 10.0   # test obs duration in seconds
-samp_rate = 1.0e+6 # 1MHz test sampling rate
+t_total   = 10.0    # test obs duration in seconds
+samp_rate = 1000000 # 1MHz test sampling rate

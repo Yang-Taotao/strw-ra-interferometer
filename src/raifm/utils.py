@@ -6,12 +6,15 @@ from __future__ import annotations
 
 # supress gnuradio.blocks pylance warning
 # pyright: reportAttributeAccessIssue=false
+import contextlib
 import dataclasses
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -29,6 +32,12 @@ def sha256(path: Path) -> str:
     """get file sha256 hash"""
     with path.open("rb") as handle:
         return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def write_sha256(path: Path, digest: str) -> None:
+    """write the coreutils sha256 file next to a data file"""
+
+    Path(f"{path}.sha256").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
 
 
 def hash_gen(paths: list[Path]) -> dict[Path, str]:
@@ -52,6 +61,19 @@ def hackrf_state(serial: str) -> dict[str, str]:
     """get M0 state and byte count of one hackrf (hackrf_debug -S)"""
     out = subprocess.run(
         ["hackrf_debug", "-S", "-d", serial],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    pairs = (line.split(":", 1) for line in out.splitlines() if ":" in line)
+    return {key.strip(): value.strip() for key, value in pairs}
+
+
+def hackrf_clock(serial: str) -> dict[str, str]:
+    """get CLKIN status of one hackrf (hackrf_clock -i)"""
+
+    out = subprocess.run(
+        ["hackrf_clock", "-i", "-d", serial],
         capture_output=True,
         text=True,
         check=False,
@@ -99,6 +121,21 @@ def convert(path_in: Path, path_out: Path) -> None:
     tb.run()
 
 
+@contextlib.contextmanager
+def quiet() -> Generator[None]:
+    """pipe osmosdr banner to fd 2"""
+
+    saved = os.dup(2)
+    null = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(null, 2)
+    try:
+        yield
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
+        os.close(null)
+
+
 def osmocom_source(
     cfg: Config,
     device: str,
@@ -108,24 +145,36 @@ def osmocom_source(
     """gnuradio osmocom src block"""
     import osmosdr
 
-    src = osmosdr.source(device)
+    with quiet():
+        src = osmosdr.source(device)
 
     src.set_sample_rate(rate_hz)
     src.set_center_freq(cfg.central_freq)
     src.set_antenna(antenna)
+
+    # src.set_clock_source("External 1PPS", 0)
+    # src.set_time_source("External", 0)
 
     for chan in range(cfg.n_chan):
         src.set_gain(cfg.gain_rf, "RF", chan)
         src.set_gain(cfg.gain_if, "IF", chan)
         src.set_gain(cfg.gain_bb, "BB", chan)
 
+    if cfg.buffer > 0:
+        with quiet():
+            src.set_min_output_buffer(0, cfg.buffer)
+
     return src
 
 
 def sleep_until(t_start: datetime) -> None:
     """sleep until starting UTC timestamp"""
-    while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0:
-        time.sleep(max(0.0, remaining - 0.000001))  # 1 micro sec
+
+    while (remaining := (t_start - datetime.now(UTC)).total_seconds()) > 0.001:
+        time.sleep(remaining - 0.001)
+
+    while datetime.now(UTC) < t_start:
+        pass
 
 
 def _text(value: object) -> str:
