@@ -28,18 +28,19 @@ The current project is laid out with:
 
 ```sh
 .
-├── config.toml     # config file
-├── data            # data directory
+├── config.toml         # run configuration interface
+├── CONTRIBUTING.md
+├── data                # data directory
 │   ├── obs
 │   └── test
 ├── dev
-├── env.yml         # conda env source
+├── env.yml             # conda env
+├── int_design.ipynb    # simulation and analysis utils
 ├── LICENSE
-├── main.py         # cli
 ├── pyproject.toml
 ├── README.md
 └── src
-    └── raifm       # src
+    └── raifm
 ```
 
 ## quickstart
