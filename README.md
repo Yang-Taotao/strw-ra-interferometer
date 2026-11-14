@@ -153,7 +153,7 @@ that is then connected to 2 USB ports on the motherboard.
 raifm -u --hackrf 4 --ports 2
 ```
 
-> [>!NOTE]
+> [!NOTE]
 > All `hackrf` connected to a USB hub share the hub's bus
 >
 > How much we can push the samp rate dependends on how many independent busses we use
@@ -183,7 +183,8 @@ raifm --start "20261111T111111Z" --duration 600
 The saved binary data files can be found under `./data/obs/`,
 this directory would be automatically populated by the observation starting time.
 
-For details on `data` directory structure, see [metadata sidecar](#metadata-sidecar).
+> [!NOTE]
+> For details on `data` directory structure, see [metadata sidecar](#metadata-sidecar).
 
 After an observation finishes,
 we check `hackrf_debug -S` for all connected `hackrf`.
