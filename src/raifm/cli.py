@@ -151,9 +151,17 @@ def cmd_obs(cfg: Config) -> None:
 
     print("raifm: hackrf_debug -S readouts")
     for idx, serial in found:
+        state = hackrf_state(serial)
+        print(f"    {station_name(idx)} {serial}")
+        if failed := state.get("hackrf_open() failed"):
+            print(f"        {failed}")
+            continue
+        print(f"        M0 {state.get('M0 count', '?')}")
+        print(f"        M4 {state.get('M4 count', '?')}")
         print(
-            f"    {station_name(idx):12s} {serial} "
-            f"{hackrf_state(serial).get('M0 count', '?')}"
+            f"        shortfall {state.get('Number of shortfalls', '?')} "
+            f"(longest {state.get('Longest shortfall', '?')}, "
+            f"limit {state.get('Shortfall limit', '?')})"
         )
 
 
