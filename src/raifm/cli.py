@@ -18,6 +18,7 @@ from raifm.usb import BUDGET_MBPS, UsbPlan, usb2_buses
 from raifm.utils import (
     convert,
     gen_test_iq,
+    hackrf_clock,
     hackrf_serials,
     hackrf_state,
     hash_gen,
@@ -80,23 +81,30 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
     ]
 
 
-def cmd_obs(cfg: Config) -> None:
-    """start per station gnuradio obs at t_start"""
+def connected_boards(cfg: Config) -> list[tuple[int, str]]:
+    """config position and serial of every connected hackrf"""
 
     connected = set(hackrf_serials())
-    found = [
+    return [
         (idx, serial)
         for idx, serial in enumerate(cfg.serial_num, 1)
         if serial in connected
     ]
+
+
+def cmd_obs(cfg: Config) -> None:
+    """start per station gnuradio obs at t_start"""
+
+    found = connected_boards(cfg)
     if not found:
         print(f"raifm: no hackrf connected of {len(cfg.serial_num)} configured")
         return None
 
+    seen = {idx for idx, _ in found}
     missing = [
         station_name(idx)
-        for idx, serial in enumerate(cfg.serial_num, 1)
-        if serial not in connected
+        for idx in range(1, len(cfg.serial_num) + 1)
+        if idx not in seen
     ]
     run_dir = cfg.obs_dir / cfg.t_start.strftime("%Y%m%dT%H%M%SZ")
     run_dir.mkdir(parents=True)
@@ -207,6 +215,24 @@ def cmd_test(cfg: Config) -> None:
         )
     else:
         print("raifm: test station readout byte identical to reference")
+
+
+def cmd_check(cfg: Config) -> None:
+    """check clkin status on connected hackrf"""
+
+    found = connected_boards(cfg)
+    if not found:
+        print(f"raifm: 0/{len(cfg.serial_num)} configured hackrf connected")
+        return None
+
+    print(
+        f"raifm: {len(found)}/{len(cfg.serial_num)} configured hackrf connected:"
+        f" {', '.join(station_name(idx) for idx, _ in found)}"
+    )
+    print("raifm: hackrf_clock -i readouts")
+    for idx, serial in found:
+        clock = hackrf_clock(serial).get("CLKIN status", "?")
+        print(f"    {station_name(idx):12s} {serial} {clock}")
 
 
 def cmd_purge(cfg: Config, goahead: bool) -> None:
@@ -331,6 +357,12 @@ def build_parser() -> argparse.ArgumentParser:
     #     help="cut the samples a station lost out of the latest obs run",
     # )
     mode.add_argument(
+        "-c",
+        "--check",
+        action="store_true",
+        help="check the clkin on the connected boards",
+    )
+    mode.add_argument(
         "-u",
         "--usb",
         action="store_true",
@@ -396,6 +428,8 @@ def main(argv: list[str] | None = None) -> None:
         runs osmocom_source data processing test with fake c64 hackrf readouts
     -p
         purge test data .bin files
+    -c
+        check the clock input of the connected boards
     """
 
     args = build_parser().parse_args(argv)
@@ -406,6 +440,8 @@ def main(argv: list[str] | None = None) -> None:
     # TODO
     # elif args.trim:
     #     cmd_trim(cfg)
+    elif args.check:
+        cmd_check(cfg)
     elif args.usb:
         cmd_usb(cfg, args.ports, args.hackrf or cfg.n_stations)
     elif args.test:

@@ -63,6 +63,19 @@ def hackrf_state(serial: str) -> dict[str, str]:
     return {key.strip(): value.strip() for key, value in pairs}
 
 
+def hackrf_clock(serial: str) -> dict[str, str]:
+    """get CLKIN status of one hackrf (hackrf_clock -i)"""
+
+    out = subprocess.run(
+        ["hackrf_clock", "-i", "-d", serial],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    pairs = (line.split(":", 1) for line in out.splitlines() if ":" in line)
+    return {key.strip(): value.strip() for key, value in pairs}
+
+
 def gen_test_iq(path: Path, samples: int) -> None:
     """gen fake hackrf raw I/Q int8 data"""
     rng = np.random.default_rng(HACKRFCFG.test_seed)
