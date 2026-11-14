@@ -18,6 +18,8 @@
     - [cli](#cli)
   - [conventions](#conventions)
   - [metadata sidecar](#metadata-sidecar)
+    - [metadata](#metadata)
+    - [file checksum](#file-checksum)
 
 ## tree
 
@@ -54,6 +56,9 @@ cd strw-ra-interferometer
 
 > [!IMPORTANT]
 > Make sure `miniforge3` or equivalent is installed.
+>
+> For users on windows,
+> use `conda prompt` or equivalent for running the following cli commands.
 >
 > Alternatively, if you are using `uv` or py `venv`,
 > make sure you have system site packages
@@ -190,23 +195,23 @@ Example directory tree under `./data`:
 ├── obs
 │   └── 20261111T111111Z
 │       ├── antenna_01.bin
+│       ├── antenna_01.bin.sha256
 │       ├── antenna_02.bin
+│       ├── antenna_02.bin.sha256
 │       └── metadata.json
 └── test
     ├── antenna_01.bin
+    ├── antenna_01.bin.sha256
     ├── antenna_02.bin
+    ├── antenna_02.bin.sha256
     ├── antenna_03.bin
-    ├── antenna_04.bin
-    ├── antenna_05.bin
-    ├── antenna_06.bin
-    ├── antenna_07.bin
-    ├── antenna_08.bin
-    ├── antenna_09.bin
-    ├── antenna_10.bin
+    ├── antenna_03.bin.sha256
     ├── metadata.json
     ├── test_c64.bin
     └── test_iq.bin
 ```
+
+### metadata
 
 > [!NOTE]
 > The metadata contains source parameters from `config.toml`,
@@ -251,4 +256,33 @@ class MetadataCFG:
     test_dir: str
     test_t_total: float
     test_samp_rate: float
+```
+
+### file checksum
+
+> [!IMPORTANT]
+> A `.sha256` checksum file file is written alongside individual `.bin` data.
+>
+> We recommend users to perform a quick file checksum post file transfer.
+
+On Linux platform, this can be done via:
+
+```sh
+cd data/obs/xxx
+sha256sum -c *.sha256
+```
+
+For MacOS platform, this becomes:
+
+```sh
+cd data/obs/xxx
+shasum -a 256 -c *.sha256
+```
+
+With Windows platform,
+we recommend using `git bash` or `wsl` to run commands for this step:
+
+```sh
+cd data/obs/xxx
+sha256sum -c *.sha256
 ```
