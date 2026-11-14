@@ -6,12 +6,15 @@ from __future__ import annotations
 
 # supress gnuradio.blocks pylance warning
 # pyright: reportAttributeAccessIssue=false
+import contextlib
 import dataclasses
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -99,6 +102,21 @@ def convert(path_in: Path, path_out: Path) -> None:
     tb.run()
 
 
+@contextlib.contextmanager
+def quiet() -> Generator[None]:
+    """pipe osmosdr banner to fd 2"""
+
+    saved = os.dup(2)
+    null = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(null, 2)
+    try:
+        yield
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
+        os.close(null)
+
+
 def osmocom_source(
     cfg: Config,
     device: str,
@@ -108,7 +126,8 @@ def osmocom_source(
     """gnuradio osmocom src block"""
     import osmosdr
 
-    src = osmosdr.source(device)
+    with quiet():
+        src = osmosdr.source(device)
 
     src.set_sample_rate(rate_hz)
     src.set_center_freq(cfg.central_freq)
