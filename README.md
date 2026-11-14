@@ -69,8 +69,9 @@ We then do a quick editable install of the current package:
 pip install -e .
 ```
 
-> [!NOTE]
+> [!IMPORTANT]
 > No `conda` needed if the host has `gnuradio`, `gr-osmosdr`, and `hackrf`.
+>
 > Apt installed ones are separated from the uv venv, thus you need:
 >
 > ```sh
@@ -78,11 +79,11 @@ pip install -e .
 > PYTHONPATH=src python3 -m raifm.cli -t --duration 5
 > ```
 
-Current version should read `0.2.0`:
+Current version should read `0.2.1`:
 
 ```sh
 raifm -v
-raifm 0.2.0
+raifm 0.2.1
 ```
 
 ### cli
