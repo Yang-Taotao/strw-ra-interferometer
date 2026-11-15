@@ -11,6 +11,7 @@
 
 - [strw-ra-interferometer](#strw-ra-interferometer)
   - [toc](#toc)
+  - [architecture](#architecture)
   - [tree](#tree)
   - [quickstart](#quickstart)
     - [prep](#prep)
@@ -21,6 +22,51 @@
   - [metadata sidecar](#metadata-sidecar)
     - [metadata](#metadata)
     - [file checksum](#file-checksum)
+
+## architecture
+
+```mermaid
+flowchart TD
+    toml["config.toml"] --> config["config.py<br/>Config | HackrfConfig | MetadataCFG"]
+    config --> cli["cli.py<br/>argparse | dispatch | overrides"]
+
+    cli -->|"-o / default"| obs["cmd_obs"]
+    cli -->|"-t"| test["cmd_test"]
+    cli -->|"-c"| check["cmd_check"]
+    cli -->|"-u"| usb["cmd_usb"]
+    cli -->|"-p -y"| purge["cmd_purge"]
+
+    check --> clock["utils.hackrf_clock<br/>hackrf_clock -i"]
+    usb --> plan["usb.UsbPlan<br/>hackrf per bus vs 480 Mbps"]
+
+    test --> iq["utils.gen_test_iq<br/>test_iq.bin"]
+    iq --> conv["utils.convert<br/>int8 → complex64"]
+    conv --> ref["test_c64.bin"]
+    ref --> testjobs["cli.test_jobs"]
+
+    obs --> serials["utils.hackrf_serials<br/>hackrf_info"]
+    serials --> obsjobs["cli.obs_jobs<br/>Job per station"]
+    obsjobs --> runjobs
+    testjobs --> runjobs
+
+    runjobs["run.run_jobs<br/>multiprocessing spawn"] --> child
+
+    subgraph child["run.capture_process, one process per hackrf, one core each"]
+        direction LR
+        src["utils.osmocom_source<br/>osmosdr.source(hackrf=serial,bias=1)<br/>rate | freq | RF/IF/BB gain | antenna"]
+        head["blocks.head<br/>n samples"]
+        sink["blocks.file_sink"]
+        src --> head --> sink
+    end
+
+    child --> bins["antenna_XX.bin<br/>complex64"]
+    bins --> sha["utils.hash_gen + write_sha256<br/>antenna_XX.bin.sha256"]
+    bins --> meta["utils.save_metadata<br/>metadata.json | run.json"]
+    bins --> dbg["utils.hackrf_state<br/>hackrf_debug -S readout"]
+
+    testjobs --> cmp["checksum<br/>PASS / FAIL"]
+    sha --> cmp
+```
 
 ## tree
 
