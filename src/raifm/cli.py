@@ -203,7 +203,7 @@ def cmd_test(cfg: Config) -> None:
         print(f"    {mark} {job.label:12s} {checksums[job.path_out]}")
 
     save_metadata(
-        cfg.test_dir / "run.json",
+        cfg.test_dir / "metadata.json",
         "test",
         cfg,
         [
