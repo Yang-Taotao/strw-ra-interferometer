@@ -25,47 +25,135 @@
 
 ## architecture
 
+The configurations are set and parsed in to cli:
+
 ```mermaid
-flowchart TD
-    toml["config.toml"] --> config["config.py<br/>Config | HackrfConfig | MetadataCFG"]
-    config --> cli["cli.py<br/>argparse | dispatch | overrides"]
+flowchart LR
+    
+    toml["config.toml<br/>arg_input_interface"] 
+    config["config.py<br/>Config/HackrfConfig/MetadataCFG"]
+    cli["cli.py<br/>argparse/dispatch/overrides"]
 
-    cli -->|"-o / default"| obs["cmd_obs"]
-    cli -->|"-t"| test["cmd_test"]
-    cli -->|"-c"| check["cmd_check"]
-    cli -->|"-u"| usb["cmd_usb"]
-    cli -->|"-p -y"| purge["cmd_purge"]
+    toml --> config --> cli
+```
 
-    check --> clock["utils.hackrf_clock<br/>hackrf_clock -i"]
-    usb --> plan["usb.UsbPlan<br/>hackrf per bus vs 480 Mbps"]
+The cli then dispatch jobs:
 
-    test --> iq["utils.gen_test_iq<br/>test_iq.bin"]
-    iq --> conv["utils.convert<br/>int8 → complex64"]
-    conv --> ref["test_c64.bin"]
-    ref --> testjobs["cli.test_jobs"]
+```mermaid
+flowchart LR
 
-    obs --> serials["utils.hackrf_serials<br/>hackrf_info"]
-    serials --> obsjobs["cli.obs_jobs<br/>Job per station"]
-    obsjobs --> runjobs
-    testjobs --> runjobs
+    cli["cli.py"]
 
-    runjobs["run.run_jobs<br/>multiprocessing spawn"] --> child
+    o["cmd_obs"]
+    t["cmd_test"]
+    c["cmd_check"]
+    u["cmd_usb"]
+    p["cmd_purge"]
 
-    subgraph child["run.capture_process, one process per hackrf, one core each"]
-        direction LR
-        src["utils.osmocom_source<br/>osmosdr.source(hackrf=serial,bias=1)<br/>rate | freq | RF/IF/BB gain | antenna"]
-        head["blocks.head<br/>n samples"]
-        sink["blocks.file_sink"]
+    oblk["observation_mode_sequence"] 
+    tblk["test_processing_mode_sequence"]
+    cblk["utils.hackrf_clock<br/>hackrf_clock -i"]
+    ublk["usb.UsbPlan<br/>max_sampling_rate"]
+    pblk["unlink_test_data_and_sidecar"]
+
+    cli -->|"-o"| o --> oblk
+    cli -->|"-t"| t --> tblk
+    cli -->|"-c"| c --> cblk
+    cli -->|"-u"| u --> ublk
+    cli -->|"-p"| p --> pblk
+```
+
+The default command is `-o` for spinning up the observation mode:
+
+```mermaid
+flowchart LR
+
+    obs["cmd_obs"]
+    
+    jobprep["prepare jobs"]
+    
+    serials["utils.hackrf_serials<br/>hackrf_info"]
+    obsjobs["cli.obs_jobs<br/>Job per station"]
+    runjobs["run.run_jobs<br/>multiprocessing spawn"]
+
+    subgraph jobprep
+        direction TB
+        serials --> obsjobs --> runjobs
+    end
+
+    subproc["run.capture_process — one process per hackrf/gnuradio on dedicated core"]
+    
+    src["utils.osmocom_source<br/>osmosdr.source(hackrf=serial,bias=1)<br/>rate | freq | RF/IF/BB gain | antenna"]
+    head["blocks.head<br/>n samples"]
+    sink["blocks.file_sink"]
+
+    subgraph subproc
+        direction TB
         src --> head --> sink
     end
 
-    child --> bins["antenna_XX.bin<br/>complex64"]
-    bins --> sha["utils.hash_gen + write_sha256<br/>antenna_XX.bin.sha256"]
-    bins --> meta["utils.save_metadata<br/>metadata.json | run.json"]
-    bins --> dbg["utils.hackrf_state<br/>hackrf_debug -S readout"]
+    bins["antenna_XX.bin<br/>complex64"]
 
-    testjobs --> cmp["checksum<br/>PASS / FAIL"]
-    sha --> cmp
+    datacheck["sidecar/checksum/debug"]
+
+    sha256["utils.hash_gen + write_sha256<br/>antenna_XX.bin.sha256"]
+    meta["utils.save_metadata<br/>metadata.json"]
+    debug["utils.hackrf_state<br/>hackrf_debug -S readout"]
+
+    subgraph datacheck
+        direction TB
+        sha256 
+        meta
+        debug
+    end
+
+    obs --> jobprep --> subproc --> bins
+    bins --> sha256
+    bins --> meta
+    bins -->debug
+```
+
+The test mode includes:
+
+```mermaid
+flowchart LR
+
+    test["cmd_test"]
+
+    datagen["gen_pseudo_data_and_cast"]
+
+    iq["utils.gen_test_iq<br/>test_iq.bin"]
+    c64["utils.convert<br/>int8 → complex64"]
+    ref["reference test_c64.bin"]
+
+    subgraph datagen
+        direction TB
+        iq --> c64 --> ref
+    end
+
+    dataproc["test_gnuradio_data_processing"]
+    
+    testjobs["cli.test_jobs"]
+    runjobs["run.run_jobs<br/>shared capture pipeline"]
+
+    subgraph dataproc
+        direction TB
+        testjobs --> runjobs
+    end
+
+    bins["antenna_XX.bin<br/>complex64"]
+
+    datacheck["sidecar_and_checksum"]
+
+    sha256["utils.hash_gen<br/>write_sha256"]
+    checksum["checksum<br/>PASS/FAIL"]
+
+    subgraph datacheck
+        direction TB
+        sha256 --> checksum
+    end
+
+    test --> datagen --> dataproc --> bins --> datacheck
 ```
 
 ## tree
