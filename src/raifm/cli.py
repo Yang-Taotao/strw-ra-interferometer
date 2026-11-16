@@ -5,6 +5,7 @@ CLI setup.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from dataclasses import replace
@@ -22,7 +23,10 @@ from raifm.utils import (
     hackrf_serials,
     hackrf_state,
     hash_gen,
+    hostname,
+    log_path,
     save_metadata,
+    setup_logging,
     sha256,
     write_sha256,
 )
@@ -31,7 +35,9 @@ if TYPE_CHECKING:
     from raifm.run import Job
 
 
-def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[Job]:
+def obs_jobs(
+    cfg: Config, run_dir: Path, found: list[tuple[int, str]], run_log: Path
+) -> list[Job]:
     """gnuradio jobs for the connected hackrf"""
 
     from raifm.run import Job
@@ -49,12 +55,13 @@ def obs_jobs(cfg: Config, run_dir: Path, found: list[tuple[int, str]]) -> list[J
             path_out=run_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=cfg.t_start,
+            log=run_log,
         )
         for idx, serial in found
     ]
 
 
-def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
+def test_jobs(cfg: Config, ref: Path, t_start: datetime, run_log: Path) -> list[Job]:
     """gnuradio jobs for test"""
 
     from raifm.run import Job
@@ -77,6 +84,7 @@ def test_jobs(cfg: Config, ref: Path, t_start: datetime) -> list[Job]:
             path_out=cfg.test_dir / f"{station_name(idx)}.bin",
             core=(idx - 1) % ncores,
             t_start=t_start,
+            log=run_log,
         )
         for idx in range(1, cfg.n_stations + 1)
     ]
@@ -96,9 +104,14 @@ def connected_boards(cfg: Config) -> list[tuple[int, str]]:
 def cmd_obs(cfg: Config) -> None:
     """start per station gnuradio obs at t_start"""
 
+    run_log = log_path()
+    print(f"raifm: log {run_log}", flush=True)
+    log = setup_logging(run_log)
+    cmd_check(cfg, log)
+
     found = connected_boards(cfg)
     if not found:
-        print(f"raifm: no hackrf connected of {len(cfg.serial_num)} configured")
+        log.info("no hackrf connected")
         return None
 
     seen = {idx for idx, _ in found}
@@ -110,19 +123,16 @@ def cmd_obs(cfg: Config) -> None:
     run_dir = cfg.obs_dir / cfg.t_start.strftime("%Y%m%dT%H%M%SZ")
     run_dir.mkdir(parents=True)
 
-    print(
-        f"raifm: {len(found)} of {len(cfg.serial_num)} configured hackrf connected:"
-        f" {', '.join(station_name(idx) for idx, _ in found)}",
-        flush=True,
-    )
     if missing:
         print(f"raifm: not connected: {', '.join(missing)}", flush=True)
+        log.info("not connected: %s", ", ".join(missing))
     print(
         f"raifm: {cfg.samp_rate / 1e6:.1f} Msps, {cfg.t_total:.1f} s -> {run_dir}",
         flush=True,
     )
+    log.info("obs %.1f Msps %.1f s -> %s", cfg.samp_rate / 1e6, cfg.t_total, run_dir)
 
-    jobs = obs_jobs(cfg, run_dir, found)
+    jobs = obs_jobs(cfg, run_dir, found, run_log)
     from raifm.run import run_jobs
 
     run_jobs(cfg, jobs)
@@ -132,9 +142,11 @@ def cmd_obs(cfg: Config) -> None:
         size = job.path_out.stat().st_size
         write_sha256(job.path_out, checksums[job.path_out])
         print(f"    {job.label:12s} {size / 1e9:.2f} GB  {checksums[job.path_out]}")
+        log.info("%s %.2f GB %s", job.label, size / 1e9, checksums[job.path_out])
 
+    meta = run_dir / f"metadata.{hostname()}.json"
     save_metadata(
-        run_dir / "metadata.json",
+        meta,
         "obs",
         cfg,
         [
@@ -149,7 +161,8 @@ def cmd_obs(cfg: Config) -> None:
             for job in jobs
         ],
     )
-    print(f"raifm: wrote {run_dir / 'metadata.json'}")
+    print(f"raifm: wrote {meta}")
+    log.info("wrote %s", meta)
 
     print("raifm: hackrf_debug -S readouts")
     for idx, serial in found:
@@ -157,7 +170,16 @@ def cmd_obs(cfg: Config) -> None:
         print(f"    {station_name(idx)} {serial}")
         if failed := state.get("hackrf_open() failed"):
             print(f"        {failed}")
+            log.info("%s %s %s", station_name(idx), serial, failed)
             continue
+        log.info(
+            "%s %s M0 %s M4 %s shortfall %s",
+            station_name(idx),
+            serial,
+            state.get("M0 count", "?"),
+            state.get("M4 count", "?"),
+            state.get("Number of shortfalls", "?"),
+        )
         print(f"        M0 {state.get('M0 count', '?')}")
         print(f"        M4 {state.get('M4 count', '?')}")
         print(
@@ -176,6 +198,17 @@ def cmd_test(cfg: Config) -> None:
     iq = cfg.test_dir / HACKRFCFG.test_iq
     ref = cfg.test_dir / HACKRFCFG.test_c64
 
+    run_log = log_path()
+    print(f"raifm: log {run_log}", flush=True)
+    log = setup_logging(run_log)
+    log.info(
+        "test %d stations at %.1f Msps %.0f s, %.1e samples",
+        cfg.n_stations,
+        cfg.test_samp_rate / 1e6,
+        cfg.test_t_total,
+        samples,
+    )
+
     t_start = datetime.now(UTC) + timedelta(seconds=3)
     print(
         f"raifm: test {cfg.n_stations} stations at {cfg.test_samp_rate / 1e6:.1f} Msps:"
@@ -186,7 +219,7 @@ def cmd_test(cfg: Config) -> None:
     gen_test_iq(iq, samples)
     convert(iq, ref)
 
-    jobs = test_jobs(cfg, ref, t_start)
+    jobs = test_jobs(cfg, ref, t_start, run_log)
     from raifm.run import run_jobs
 
     run_jobs(cfg, jobs)
@@ -196,14 +229,16 @@ def cmd_test(cfg: Config) -> None:
 
     bad = [job.label for job in jobs if checksums[job.path_out] != reference]
     print(f"raifm: reference {ref.name} {reference}")
+    log.info("reference %s %s", ref.name, reference)
 
     for job in jobs:
         mark = "PASS" if checksums[job.path_out] == reference else "FAIL"
         write_sha256(job.path_out, checksums[job.path_out])
         print(f"    {mark} {job.label:12s} {checksums[job.path_out]}")
+        log.info("%s %s %s", mark, job.label, checksums[job.path_out])
 
     save_metadata(
-        cfg.test_dir / "metadata.json",
+        cfg.test_dir / f"metadata.{hostname()}.json",
         "test",
         cfg,
         [
@@ -228,22 +263,29 @@ def cmd_test(cfg: Config) -> None:
         print("raifm: test station readout byte identical to reference")
 
 
-def cmd_check(cfg: Config) -> None:
+def cmd_check(cfg: Config, logger: logging.Logger | None = None) -> None:
     """check clkin status on connected hackrf"""
 
     found = connected_boards(cfg)
     if not found:
         print(f"raifm: 0/{len(cfg.serial_num)} configured hackrf connected")
+        if logger:
+            logger.info("0/%d configured hackrf connected", len(cfg.serial_num))
         return None
 
+    names = ", ".join(station_name(idx) for idx, _ in found)
     print(
         f"raifm: {len(found)}/{len(cfg.serial_num)} configured hackrf connected:"
-        f" {', '.join(station_name(idx) for idx, _ in found)}"
+        f" {names}"
     )
     print("raifm: hackrf_clock -i readouts")
+    if logger:
+        logger.info("%d/%d connected: %s", len(found), len(cfg.serial_num), names)
     for idx, serial in found:
         clock = hackrf_clock(serial).get("CLKIN status", "?")
         print(f"    {station_name(idx):12s} {serial} {clock}")
+        if logger:
+            logger.info("%s %s %s", station_name(idx), serial, clock)
 
 
 def cmd_purge(cfg: Config, goahead: bool) -> None:
