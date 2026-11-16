@@ -21,7 +21,7 @@ class UsbPlan:
 
     n_hackrf: int
     n_ports: int
-    rate_hz: float
+    rate_hz: int
 
     @property
     def per_board_mbps(self) -> float:

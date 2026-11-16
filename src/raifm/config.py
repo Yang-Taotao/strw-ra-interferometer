@@ -2,10 +2,12 @@
 Configs.
 """
 
+import json
 import tomllib
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Self
 
 DEFAULT_CONFIG = Path("config.toml")
 
@@ -33,7 +35,7 @@ class Config:
     serial_num: tuple[str, ...]
     t_start: datetime
     t_total: float
-    samp_rate: float
+    samp_rate: int
     central_freq: float
     gain_rf: int
     gain_if: int
@@ -43,7 +45,8 @@ class Config:
     obs_dir: Path
     test_dir: Path
     test_t_total: float
-    test_samp_rate: float
+    test_samp_rate: int
+    buffer: int = 0
 
     @property
     def n_samples(self) -> int:
@@ -76,9 +79,39 @@ def load_config(path: Path = DEFAULT_CONFIG) -> Config:
         gain_if=cfg["gain"]["if"],
         gain_bb=cfg["gain"]["bb"],
         n_chan=cfg["obs"]["n_chan"],
+        buffer=cfg["obs"]["buffer"],
         bias=cfg["hackrf"]["bias"],
         obs_dir=Path(cfg["data"]["obs"]),
         test_dir=Path(cfg["data"]["test"]),
         test_t_total=cfg["test"]["t_total"],
         test_samp_rate=cfg["test"]["samp_rate"],
     )
+
+
+@dataclass(frozen=True)
+class MetadataCFG:
+    """per run metadata cfg"""
+
+    n_stations: int
+    serial_num: list[str]
+    t_start: datetime
+    t_total: float
+    samp_rate: int
+    central_freq: float
+    gain_rf: int
+    gain_if: int
+    gain_bb: int
+    n_chan: int
+    bias: int
+    obs_dir: str
+    test_dir: str
+    test_t_total: float
+    test_samp_rate: int
+    buffer: int = 0
+
+    @classmethod
+    def parse_json(cls, path: str | Path) -> Self:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        cfg = data["config"]
+        cfg["t_start"] = datetime.fromisoformat(cfg["t_start"])
+        return cls(**cfg)
