@@ -2,11 +2,6 @@
 
 **Radio Astronomy paint-can interferometer project** at [Leiden Observatory](https://www.strw.leidenuniv.nl/).
 
-> [!CAUTION]
-> Work in progress project
->
-> Breaking changes may be frequent, see `README` for instructions.
-
 ## toc
 
 - [strw-ra-interferometer](#strw-ra-interferometer)
@@ -22,6 +17,7 @@
   - [metadata sidecar](#metadata-sidecar)
     - [metadata](#metadata)
     - [file checksum](#file-checksum)
+  - [logs](#logs)
 
 ## architecture
 
@@ -97,7 +93,7 @@ flowchart LR
     datacheck["sidecar/checksum/debug"]
 
     sha256["utils.hash_gen + write_sha256<br/>antenna_XX.bin.sha256"]
-    meta["utils.save_metadata<br/>metadata.json"]
+    meta["utils.save_metadata<br/>metadata.&lt;host&gt;.json"]
     debug["utils.hackrf_state<br/>hackrf_debug -S readout"]
 
     subgraph datacheck
@@ -169,8 +165,9 @@ The current project is laid out with:
 │   └── test
 ├── dev
 ├── env.yml             # conda env
-├── int_design.ipynb    # simulation and analysis utils
+├── field_test.ipynb    # simulation and analysis field_test
 ├── LICENSE
+├── notebooks           # simulation and analysis notebooks
 ├── pyproject.toml
 ├── README.md
 └── src
@@ -244,6 +241,10 @@ raifm 0.2.1
 The default mode is observation,
 this will trigger actual obsevation from real `hackrf` data stream.
 An optional flag of `-o` can be added to achieve the same effect.
+
+> [!NOTE]
+> When running the default observation mode,
+> the check mode is autoamtically ran before the observation start.
 
 ```sh
 raifm
@@ -349,7 +350,7 @@ Example directory tree under `./data`:
 │       ├── antenna_01.bin.sha256
 │       ├── antenna_02.bin
 │       ├── antenna_02.bin.sha256
-│       └── metadata.json
+│       └── metadata.<host>.json
 └── test
     ├── antenna_01.bin
     ├── antenna_01.bin.sha256
@@ -357,7 +358,7 @@ Example directory tree under `./data`:
     ├── antenna_02.bin.sha256
     ├── antenna_03.bin
     ├── antenna_03.bin.sha256
-    ├── metadata.json
+    ├── metadata.<host>.json
     ├── test_c64.bin
     └── test_iq.bin
 ```
@@ -370,29 +371,37 @@ Example directory tree under `./data`:
 >
 > The aim is to keep `config.toml` atomic across devices.
 >
-> The `metadata.json` files are preserved across `-p` purge calls for tests.
+> The `metadata.<host>.json` files are preserved across `-p` purge calls for tests.
+>
+> We read and assign host name to the files to ensure metadata from different
+> machines are not accidentally overridden when aggregating data for storage.
 
-To parse the `metadata.json` back in for analysis in `py`:
+To parse the `metadata.<host>.json` back in for analysis in `py`:
 
 ```py
 from raifm import config
 
 # set path and parse json to dataclass
-test_metadata_path = "./data/test/run.json"
-TestCFG = config.MetadataCFG.parse_json(obs_metadata_path)
+test_metadata_path = "./data/test/metadata.<host>.json"
+TestCFG = config.MetadataCFG.parse_json(test_metadata_path)
 
-# read attr - example to get n_stations
-n_stations = TestCFG.n_stations
+# read attr - example to get starting time of observation
+t_start = TestCFG.t_start
 ```
 
 Currently, we support the following metadata:
+
+> [!NOTE]
+> Currently, `n_stations` parse the input from `config.toml`,
+>
+> The actual number of antenna stations used should be checked against the metadata.
 
 ```sh
 @dataclass(frozen=True)
 class MetadataCFG:
     """per run metadata cfg"""
 
-    n_stations: int
+    n_stations: int  # this currently always parse whatever is set in config.toml
     serial_num: list[str]
     t_start: datetime
     t_total: float
@@ -438,3 +447,13 @@ we recommend using `git bash` or `wsl` to run commands for this step:
 cd data/obs/xxx
 sha256sum -c *.sha256
 ```
+
+## logs
+
+Each `-o` and `-t` run writes one log under `./logs`:
+
+```sh
+./logs/20261111T123456Z.<host>.log
+```
+
+This should be used as source of truth for diagnosing a test or observation run.

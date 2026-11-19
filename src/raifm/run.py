@@ -15,7 +15,7 @@ from pathlib import Path
 import psutil
 
 from raifm.config import Config
-from raifm.utils import osmocom_source, sleep_until
+from raifm.utils import osmocom_source, setup_logging, sleep_until
 
 
 @dataclass(frozen=True)
@@ -31,12 +31,16 @@ class Job:
     path_out: Path
     core: int
     t_start: datetime
+    log: Path
 
 
 def capture_process(cfg: Config, job: Job) -> None:
     """capture one station per core, start on the common timestamp"""
 
     from gnuradio import blocks, gr
+
+    sys.stderr = job.log.open("a", encoding="utf-8")
+    log = setup_logging(job.log)
 
     p = psutil.Process()
     p.cpu_affinity([job.core])
@@ -48,10 +52,18 @@ def capture_process(cfg: Config, job: Job) -> None:
     tb = gr.top_block(f"capture_{job.label}")
     tb.connect(src, head, sink)
 
+    log.info("%s armed, waiting for %s", job.label, job.t_start.isoformat())
     sleep_until(job.t_start)
-    late = (datetime.now(UTC) - job.t_start).total_seconds() * 1e3
+    late = (datetime.now(UTC) - job.t_start).total_seconds() * 1e6
     started = time.monotonic()
+    log.info("%s gnuradio started +%.6f ms", job.label, late)
     tb.run()
+    log.info(
+        "%s done %d samples in %.6f s",
+        job.label,
+        job.samples,
+        time.monotonic() - started,
+    )
 
     print(
         f"    [{job.label}] started +{late:.6f} ms, "
@@ -105,6 +117,8 @@ def run_jobs(cfg: Config, jobs: list[Job]) -> None:
             flush=True,
         )
     print(f"raifm: {len(jobs)} hackrf armed, waiting for {t_start}", flush=True)
+    log = setup_logging(jobs[0].log)
+    log.info("%d stations armed, waiting for %s", len(jobs), t_start)
 
     sleep_until(jobs[0].t_start)
     print(
@@ -112,8 +126,14 @@ def run_jobs(cfg: Config, jobs: list[Job]) -> None:
         f"recording {jobs[0].samples} samples each",
         flush=True,
     )
+    log.info("%d gnuradio processes started", len(jobs))
     progress(jobs[0].samples / jobs[0].rate_hz)
 
     for proc in procs:
         proc.join()
+        if proc.exitcode:
+            log.error("%s exited %s", proc.name, proc.exitcode)
+        else:
+            log.info("%s exited 0", proc.name)
+    log.info("%d stations finished", len(jobs))
     print(f"raifm: {len(jobs)} stations finished", flush=True)

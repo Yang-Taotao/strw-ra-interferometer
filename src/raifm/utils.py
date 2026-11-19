@@ -10,7 +10,10 @@ import contextlib
 import dataclasses
 import hashlib
 import json
+import logging
 import os
+import re
+import socket
 import subprocess
 import sys
 import time
@@ -43,6 +46,39 @@ def write_sha256(path: Path, digest: str) -> None:
 def hash_gen(paths: list[Path]) -> dict[Path, str]:
     """get all sha256 hash for file in list"""
     return {path: sha256(path) for path in paths}
+
+
+def hostname() -> str:
+    """get current host name"""
+
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", socket.gethostname()).strip("-.")
+    return name or "unknown"
+
+
+def log_path() -> Path:
+    """gen per run log path with host name"""
+
+    path = Path("logs")
+    path.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return path / f"{stamp}.{hostname()}.log"
+
+
+def setup_logging(path: Path) -> logging.Logger:
+    """attach one file handler per run"""
+
+    logger = logging.getLogger("raifm")
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s.%(msecs)03dZ %(levelname).1s %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S",
+        )
+        formatter.converter = time.gmtime
+        handler = logging.FileHandler(path, mode="a", encoding="utf-8")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    return logger
 
 
 def hackrf_serials() -> list[str]:
