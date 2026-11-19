@@ -2,11 +2,6 @@
 
 **Radio Astronomy paint-can interferometer project** at [Leiden Observatory](https://www.strw.leidenuniv.nl/).
 
-> [!CAUTION]
-> **Work in Progress Project**
->
-> Breaking changes may be frequent, see `README` for instructions.
-
 ## toc
 
 - [strw-ra-interferometer](#strw-ra-interferometer)
@@ -170,9 +165,9 @@ The current project is laid out with:
 │   └── test
 ├── dev
 ├── env.yml             # conda env
-├── int_design.ipynb    # simulation and analysis utils
-├── logs                # logs
+├── field_test.ipynb    # simulation and analysis field_test
 ├── LICENSE
+├── notebooks           # simulation and analysis notebooks
 ├── pyproject.toml
 ├── README.md
 └── src
@@ -391,12 +386,17 @@ test_metadata_path = "./data/test/metadata.<host>.json"
 TestCFG = config.MetadataCFG.parse_json(test_metadata_path)
 
 # read attr - example to get starting time of observation
-n_stations = TestCFG.t_start
+t_start = TestCFG.t_start
 ```
 
 Currently, we support the following metadata:
 
-```py
+> [!NOTE]
+> Currently, `n_stations` parse the input from `config.toml`,
+>
+> The actual number of antenna stations used should be checked against the metadata.
+
+```sh
 @dataclass(frozen=True)
 class MetadataCFG:
     """per run metadata cfg"""
@@ -422,7 +422,7 @@ class MetadataCFG:
 ### file checksum
 
 > [!IMPORTANT]
-> A `.sha256` checksum file is written alongside individual `.bin` data.
+> A `.sha256` checksum file file is written alongside individual `.bin` data.
 >
 > We recommend users to perform a quick file checksum post file transfer.
 
