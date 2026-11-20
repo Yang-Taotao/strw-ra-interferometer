@@ -16,7 +16,7 @@ git checkout -b xxx
 > Typically, this reads to a dev branch such as `dev/xxx`,
 > a feature branch `feat/xxx`, and fixes such as `fix/xxx`.
 
-To keep your branch up to data with the latest changes on `main`, do quick rebase:
+To keep your branch up to date with the latest changes on `main`, do quick rebase:
 
 ```sh
 git fetch origin
