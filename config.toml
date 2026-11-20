@@ -14,7 +14,7 @@ if = 32 # if gain in db
 bb = 32 # bb gain in db
 
 [hackrf]
-n_stations = 10 # number of antennas
+n_stations = 9 # number of antennas
 serial_num = [
 "0000000000000000a06063c8247a835f", # station 01
 "0000000000000000325866e622b64e23", # station 02
@@ -25,7 +25,6 @@ serial_num = [
 "0000000000000000a06063c8247a735f", # station 07
 "0000000000000000a06063c82410685f", # station 08
 "0000000000000000a06063c8258c895f", # station 09
-"0000000000000000a06063c82410685f", # station 10
 ]
 bias = 1 # bias tee
 
