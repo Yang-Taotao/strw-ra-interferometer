@@ -120,7 +120,26 @@ def run_jobs(cfg: Config, jobs: list[Job]) -> None:
     log = setup_logging(jobs[0].log)
     log.info("%d stations armed, waiting for %s", len(jobs), t_start)
 
-    sleep_until(jobs[0].t_start)
+    # a station dying before the start writes no data: 
+    # kill every station and crash right away
+    while datetime.now(UTC) < jobs[0].t_start:
+        dead = [proc for proc in procs if proc.exitcode]
+        if dead:
+            for proc in dead:
+                print(
+                    f"raifm: {proc.name} exited {proc.exitcode} at"
+                    " startup, no data written",
+                    flush=True,
+                )
+            log.error(
+                "%s exited at startup, no data written, aborting run",
+                ", ".join(proc.name for proc in dead),
+            )
+            print("raifm: aborting all stations", flush=True)
+            for proc in procs:
+                proc.kill()
+            raise SystemExit(1)
+        time.sleep(0.2)
     print(
         f"raifm: {len(jobs)} gnuradio processes started, "
         f"recording {jobs[0].samples} samples each",
@@ -135,5 +154,15 @@ def run_jobs(cfg: Config, jobs: list[Job]) -> None:
             log.error("%s exited %s", proc.name, proc.exitcode)
         else:
             log.info("%s exited 0", proc.name)
+
+    failed = [proc.name for proc in procs if proc.exitcode]
+    if failed:
+        print(
+            f"raifm: {len(failed)} of {len(jobs)} stations failed:"
+            f" {', '.join(failed)}",
+            flush=True,
+        )
+        raise SystemExit(1)
+
     log.info("%d stations finished", len(jobs))
     print(f"raifm: {len(jobs)} stations finished", flush=True)
